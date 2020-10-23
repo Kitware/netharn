@@ -25,9 +25,9 @@ def _dump_monitor_tensorboard(harn, mode='epoch', special_groupers=['loss'],
         xdoctest -m netharn.mixins _dump_monitor_tensorboard --profile
 
     Example:
-        >>> from netharn.export.deployer import _demodata_toy_harn
+        >>> import netharn as nh
         >>> from netharn.mixins import _dump_monitor_tensorboard
-        >>> harn = _demodata_toy_harn()
+        >>> harn = nh.FitHarn.demo()
         >>> harn.run()
         >>> try:
         >>>     _dump_monitor_tensorboard(harn)
@@ -41,7 +41,7 @@ def _dump_monitor_tensorboard(harn, mode='epoch', special_groupers=['loss'],
     import six
     from six.moves import cPickle as pickle
 
-    harn.debug('Plotting tensorboard data. serial={}, mode={}'.format(serial, mode))
+    # harn.debug('Plotting tensorboard data. serial={}, mode={}'.format(serial, mode))
 
     train_dpath = harn.train_dpath
 

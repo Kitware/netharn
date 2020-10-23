@@ -4,7 +4,41 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.9 - Unreleased
+## Version 0.5.10 - Unreleased
+
+
+### Added
+* `allow_unicode` option to `FitHarnPreferences`, which can be set to False to
+  disable utf8 characters in output formatting.
+
+* `IndexableWalker` in `netharn.util.util_json` (also exists in kwcoco)
+
+* New helper methods in `data_containers.BatchContainer`
+
+### Fixed
+* Typo: directory `explit_checkpoints` renamed to `explicit_checkpoints`.
+
+* Fixed bug where epoch 0 would write a snapshot if it failed.
+
+
+### Changed
+
+* Removed Python 3.5 support
+
+* ProgIter information will now written to the log file pending release of ubelt 0.9.3.
+
+* Progress information now includes warmup LR information in the first epoch.
+
+
+### Deprecated
+* Deprecate `colored` option in `FitHarnPreferences`. Use `NO_COLOR` environ to
+  disable ANSI coloring instead.
+
+* `netharn.export` has been deprecated for `torch_liberator` and `liberator`,
+  and will be removed in the future. 
+
+
+## Version 0.5.9 - Released 2020-08-26
 
 ### Changed
  

@@ -43,6 +43,211 @@ class Datasets(object):
         return torch_datasets
 
 
+class DatasetInfo(object):
+    """
+    experimental, attempts to do more heavy lifting
+    """
+    @staticmethod
+    def coerce(config={}, **kw):
+        """
+        Accepts 'datasets', 'train_dataset', 'vali_dataset', and 'test_dataset'.
+
+        Args:
+            config (dict | str): coercable configuration dictionary.
+        """
+        config = _update_defaults(config, kw)
+        dataset_info = _coerce_datasets(config)
+        return dataset_info
+
+
+def _coerce_datasets(config):
+    import netharn as nh
+    import ndsampler
+    import numpy as np
+    from torchvision import transforms
+    coco_datasets = nh.api.Datasets.coerce(config)
+    print('coco_datasets = {}'.format(ub.repr2(coco_datasets, nl=1)))
+    for tag, dset in coco_datasets.items():
+        dset._build_hashid(hash_pixels=False)
+
+    workdir = ub.ensuredir(ub.expandpath(config['workdir']))
+    samplers = {
+        tag: ndsampler.CocoSampler(dset, workdir=workdir, backend=config['sampler_backend'])
+        for tag, dset in coco_datasets.items()
+    }
+
+    for tag, sampler in ub.ProgIter(list(samplers.items()), desc='prepare frames'):
+        sampler.frames.prepare(workers=config['workers'])
+
+    # TODO: basic ndsampler torch dataset, likely has to support the transforms
+    # API, bleh.
+
+    transform = transforms.Compose([
+        transforms.Resize(config['input_dims']),
+        transforms.CenterCrop(config['input_dims']),
+        transforms.ToTensor(),
+        transforms.Lambda(lambda x: x.mul(255))
+    ])
+
+    torch_datasets = {
+        key: SamplerDataset(
+            sapmler, transform=transform,
+            # input_dims=config['input_dims'],
+            # augmenter=config['augmenter'] if key == 'train' else None,
+        )
+        for key, sapmler in samplers.items()
+    }
+    # self = torch_dset = torch_datasets['train']
+
+    if config['normalize_inputs']:
+        # Get stats on the dataset (todo: turn off augmentation for this)
+        import kwarray
+        _dset = torch_datasets['train']
+        stats_idxs = kwarray.shuffle(np.arange(len(_dset)), rng=0)[0:min(1000, len(_dset))]
+        stats_subset = torch.utils.data.Subset(_dset, stats_idxs)
+
+        cacher = ub.Cacher('dset_mean', cfgstr=_dset.input_id + 'v3')
+        input_stats = cacher.tryload()
+
+        from netharn.data.channel_spec import ChannelSpec
+        channels = ChannelSpec.coerce(config['channels'])
+
+        if input_stats is None:
+            # Use parallel workers to load data faster
+            from netharn.data.data_containers import container_collate
+            from functools import partial
+            collate_fn = partial(container_collate, num_devices=1)
+
+            loader = torch.utils.data.DataLoader(
+                stats_subset,
+                collate_fn=collate_fn,
+                num_workers=config['workers'],
+                shuffle=True,
+                batch_size=config['batch_size'])
+
+            # Track moving average of each fused channel stream
+            channel_stats = {key: nh.util.RunningStats()
+                             for key in channels.keys()}
+            assert len(channel_stats) == 1, (
+                'only support one fused stream for now')
+            for batch in ub.ProgIter(loader, desc='estimate mean/std'):
+                if isinstance(batch, (tuple, list)):
+                    inputs = {'rgb': batch[0]}  # make assumption
+                else:
+                    inputs = batch['inputs']
+
+                for key, val in inputs.items():
+                    try:
+                        for part in val.numpy():
+                            channel_stats[key].update(part)
+                    except ValueError:  # final batch broadcast error
+                        pass
+
+            perchan_input_stats = {}
+            for key, running in channel_stats.items():
+                running = ub.peek(channel_stats.values())
+                perchan_stats = running.simple(axis=(1, 2))
+                perchan_input_stats[key] = {
+                    'std': perchan_stats['mean'].round(3),
+                    'mean': perchan_stats['std'].round(3),
+                }
+
+            input_stats = ub.peek(perchan_input_stats.values())
+            cacher.save(input_stats)
+    else:
+        input_stats = {}
+
+    torch_loaders = {
+        tag: dset.make_loader(
+            batch_size=config['batch_size'],
+            num_batches=config['num_batches'],
+            num_workers=config['workers'],
+            shuffle=(tag == 'train'),
+            balance=(config['balance'] if tag == 'train' else None),
+            pin_memory=True)
+        for tag, dset in torch_datasets.items()
+    }
+
+    dataset_info = {
+        'torch_datasets': torch_datasets,
+        'torch_loaders': torch_loaders,
+        'input_stats': input_stats
+    }
+    return dataset_info
+
+
+class SamplerDataset(torch.utils.data.Dataset):
+    def __init__(self, sampler, transform=None, return_style='torchvision'):
+        self.sampler = sampler
+        self.transform = transform
+        self.return_style = return_style
+        self.input_id = self.sampler.hashid
+
+    def __len__(self):
+        return len(self.sampler)
+
+    def __getitem__(self, index):
+        item = self.sampler.load_item(index)
+        numpy_im = item['im']
+
+        if self.transform:
+            from PIL import Image
+            pil_im = Image.fromarray(numpy_im)
+            torch_chw = self.transform(pil_im)
+        else:
+            torch_chw = torch.from_numpy(numpy_im).permute(2, 0, 1).float()
+            # raise NotImplementedError
+
+        if self.return_style == 'torchvision':
+            cid = item['tr']['category_id']
+            cidx = self.sampler.classes.id_to_idx[cid]
+            return torch_chw, cidx
+        else:
+            raise NotImplementedError
+
+    def make_loader(self, batch_size=16, num_batches='auto', num_workers=0,
+                    shuffle=False, pin_memory=False, drop_last=False,
+                    balance=None):
+
+        import kwarray
+        if len(self) == 0:
+            raise Exception('must have some data')
+
+        def worker_init_fn(worker_id):
+            import numpy as np
+            for i in range(worker_id + 1):
+                seed = np.random.randint(0, int(2 ** 32) - 1)
+            seed = seed + worker_id
+            kwarray.seed_global(seed)
+            # if self.augmenter:
+            #     rng = kwarray.ensure_rng(None)
+            #     self.augmenter.seed_(rng)
+
+        loaderkw = {
+            'num_workers': num_workers,
+            'pin_memory': pin_memory,
+            'worker_init_fn': worker_init_fn,
+        }
+        if balance is None:
+            loaderkw['shuffle'] = shuffle
+            loaderkw['batch_size'] = batch_size
+            loaderkw['drop_last'] = drop_last
+        elif balance == 'classes':
+            from netharn.data.batch_samplers import BalancedBatchSampler
+            index_to_cid = [
+                cid for cid in self.sampler.regions.targets['category_id']
+            ]
+            batch_sampler = BalancedBatchSampler(
+                index_to_cid, batch_size=batch_size,
+                shuffle=shuffle, num_batches=num_batches)
+            loaderkw['batch_sampler'] = batch_sampler
+        else:
+            raise KeyError(balance)
+
+        loader = torch.utils.data.DataLoader(self, **loaderkw)
+        return loader
+
+
 class Initializer(object):
     """
     Base class for all netharn initializers
@@ -102,7 +307,7 @@ class Initializer(object):
             >>> print(ub.repr2(nh.Initializer.coerce(config)))
             (
                 <class 'netharn.initializers.pretrained.Pretrained'>,
-                {... 'fpath': '/fit/nice/untitled', 'leftover': None, 'mangle': True},
+                {... 'fpath': '/fit/nice/untitled', 'leftover': None, 'mangle': False},
             )
             >>> print(ub.repr2(nh.Initializer.coerce({'init': 'kaiming_normal'})))
             (
@@ -150,7 +355,7 @@ class Initializer(object):
             initializer_ = (nh.initializers.Pretrained, {
                 'fpath': ub.expandpath(config['pretrained_fpath']),
                 'leftover': kw.get('leftover', None),
-                'mangle': kw.get('mangle', True),
+                'mangle': kw.get('mangle', False),
                 'association': kw.get('association', None),
             })
         elif config['init'] == 'cls':
@@ -255,25 +460,21 @@ class Optimizer(object):
             })
         else:
             from netharn.util import util_inspect
+            _lut = {}
+
+            optim_modules = [
+                torch.optim,
+            ]
+
             try:
+                # Allow coerce to use torch_optimizer package if available
                 import torch_optimizer
             except Exception:
                 torch_optimizer = None
-
-            _lut = {}
-
-            if torch_optimizer is not None:
-                # known = ['AccSGD', 'AdaBound', 'AdaMod', 'DiffGrad', 'Lamb',
-                #          'Lookahead', 'NovoGrad', 'RAdam', 'SGDW', 'Yogi']
-                # if 0:
-                #     for key in known:
-                #         cls = getattr(torch_optimizer, key, None)
-                #         print('cls = {!r}'.format(cls))
-                #         defaultkw = util_inspect.default_kwargs(cls)
-                #         print('defaultkw = {!r}'.format(defaultkw))
-                # _lut.update({k.lower(): k for k in known})
+            else:
+                optim_modules.append(torch_optimizer)
                 _lut.update({
-                    k: c.__name__
+                    k.lower(): c.__name__
                     for k, c in torch_optimizer._NAME_OPTIM_MAP.items()})
 
             _lut.update({
@@ -282,23 +483,18 @@ class Optimizer(object):
 
             key = _lut[key]
 
-            cls = getattr(torch.optim, key, None)
-            if cls is not None:
-                defaultkw = util_inspect.default_kwargs(cls)
-                kw = defaultkw.copy()
-                kw.update()
-                optim_ = (cls, kw)
-            else:
-                if torch_optimizer is None:
-                    raise KeyError(key)
-                cls = getattr(torch_optimizer, key, None)
+            cls = None
+            for module in optim_modules:
+                cls = getattr(module, key, None)
                 if cls is not None:
                     defaultkw = util_inspect.default_kwargs(cls)
                     kw = defaultkw.copy()
                     kw.update()
                     optim_ = (cls, kw)
-                else:
-                    raise KeyError(key)
+                    break
+
+            if cls is None:
+                raise KeyError(key)
 
         return optim_
 
