@@ -29,3 +29,4 @@ kwimage >= 0.4.0
 kwplot >= 0.4.0
 
 qualname>=0.1.0;python_version < '3.0' 
+torch_liberator >= 0.0.4

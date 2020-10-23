@@ -38,8 +38,7 @@ Note:
 
 CommandLine:
     xdoctest netharn.fit_harn __doc__:0
-    xdoctest netharn.fit_harn __doc__:0 --progiter
-    xdoctest netharn.fit_harn __doc__:0 --progiter --profile --xpu=cpu
+    xdoctest netharn.fit_harn __doc__:0 --profile --xpu=cpu
 
 Example:
     >>> import netharn as nh
@@ -153,6 +152,7 @@ import traceback
 from os.path import join
 from os.path import exists
 from os.path import dirname
+from distutils.version import LooseVersion
 
 import torch
 import numpy as np
@@ -727,6 +727,7 @@ class ProgMixin(object):
 
     def _make_prog(harn, *args, **kw):
         chunksize = kw.pop('chunksize', None)
+        show_wall = kw.pop('show_wall', False)
 
         if harn.preferences['use_tqdm'] is not None:
             import warnings
@@ -746,8 +747,14 @@ class ProgMixin(object):
             import tqdm  # NOQA
             Prog = tqdm.tqdm
         elif harn.preferences['prog_backend'] == 'progiter':
-            Prog = functools.partial(
-                ub.ProgIter, chunksize=chunksize, verbose=1, time_thresh=2.0)
+            if LooseVersion(ub.__version__) >= LooseVersion('0.9.3'):
+                Prog = functools.partial(
+                    ub.ProgIter, chunksize=chunksize, verbose=1,
+                    time_thresh=2.0, show_wall=show_wall)
+            else:
+                Prog = functools.partial(
+                    ub.ProgIter, chunksize=chunksize, verbose=1,
+                    time_thresh=2.0)
         else:
             raise KeyError(harn.preferences['prog_backend'])
         return Prog(*args, **kw)
@@ -1498,7 +1505,8 @@ class CoreMixin(object):
                                              total=harn.monitor.max_epoch,
                                              disable=not harn.preferences['show_prog'],
                                              leave=True, dynamic_ncols=True,
-                                             position=0, initial=harn.epoch)
+                                             show_wall=True, position=0,
+                                             initial=harn.epoch)
             harn._update_main_prog_desc()
 
             # Loader dict should be ordered
