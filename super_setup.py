@@ -448,6 +448,59 @@ class Repo(ub.NiceRepr):
             repo.debug('Clone non-existing repo={}'.format(repo))
             repo.clone()
 
+    def update_to_latest_dev_branch(repo, dry=False):
+        remote = repo._registered_remote()
+        repo._cmd('git fetch {}'.format(remote.name))
+        repo.info('Fetch was successful')
+        remote_branchnames = [ref.remote_head for ref in remote.refs]
+        print('remote_branchnames = {!r}'.format(remote_branchnames))
+
+        # Find all the dev branches
+        dev_branches = [ref for ref in remote.refs
+                        if ref.remote_head.startswith('dev/')]
+
+        version_tuples = [
+            tuple(map(int, ref.remote_head.split('dev/')[1].split('.')))
+            for ref in dev_branches
+        ]
+        latest_ref = dev_branches[ub.argmax(version_tuples)]
+        latest_branch = latest_ref.remote_head
+
+        if repo.pygit.active_branch.name == latest_branch:
+            repo.info('Already on the latest dev branch')
+        else:
+            try:
+                repo._cmd('git checkout {}'.format(latest_branch))
+            except ShellException:
+                repo.debug('Checkout failed. Branch name might be ambiguous. Trying again')
+                try:
+                    repo._cmd('git checkout -b {} {}/{}'.format(latest_branch, remote, latest_branch))
+                except ShellException:
+                    raise Exception('does the branch exist on the remote?')
+
+    def _registered_remote(repo, dry=False):
+        # Ensure we have the right remote
+        try:
+            remote = repo.pygit.remotes[repo.remote]
+        except IndexError:
+            if not dry:
+                raise AssertionError('Something went wrong')
+            else:
+                remote = None
+
+        if remote is not None:
+            try:
+                if not remote.exists():
+                    raise IndexError
+                else:
+                    repo.debug('The requested remote={} name exists'.format(remote))
+            except IndexError:
+                repo.debug('WARNING: remote={} does not exist'.format(remote))
+            else:
+                if not remote.exists():
+                    repo.debug('Requested remote does NOT exist')
+        return remote
+
     def ensure(repo, dry=False):
         """
         Ensure that the repo is checked out on your local machine, that the
@@ -491,13 +544,7 @@ class Repo(ub.NiceRepr):
                         raise
 
         # Ensure we have the right remote
-        try:
-            remote = repo.pygit.remotes[repo.remote]
-        except IndexError:
-            if not dry:
-                raise AssertionError('Something went wrong')
-            else:
-                remote = None
+        remote = repo._registered_remote()
 
         if remote is not None:
             try:
@@ -798,16 +845,18 @@ def main():
     if ub.argflag('--ssh'):
         protocol = 'ssh'
 
+    main_repo = None
+    MAIN_REPO_NAME = 'netharn'
+    for repo in registery.repos:
+        if repo.name == MAIN_REPO_NAME:
+            main_repo = repo
+            break
+    assert main_repo is not None
+
     HACK_PROTOCOL = True
     if HACK_PROTOCOL:
         if protocol is None:
             # Try to determine if you are using ssh or https and default to that
-            main_repo = None
-            for repo in registery.repos:
-                if repo.name == 'netharn':
-                    main_repo = repo
-                    break
-            assert main_repo is not None
             for remote in repo.pygit.remotes:
                 for url in list(remote.urls):
                     gurl1 = GitURL(url)
@@ -880,6 +929,11 @@ def main():
     @click.command('versions', context_settings=default_context_settings)
     def versions():
         registery.apply('versions')
+
+    @cli_group.add_command
+    @click.command('upgrade', context_settings=default_context_settings)
+    def upgrade():
+        main_repo.update_to_latest_dev_branch()
 
     cli_group()
 
