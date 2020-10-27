@@ -768,11 +768,11 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.10', 'remote': 'public',
+        'name': 'kwarray', 'branch': 'dev/0.5.11', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.6.7', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.6.8', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     {
