@@ -424,11 +424,11 @@ def load_partial_state(model, model_state_dict, leftover=None,
                 if verbose > 1:
                     other_unmapped = other_keys - set(mapping.keys())
                     self_unmapped = self_keys - set(mapping.values())
-                    print('-- embed mapping (other -> self) --')
+                    print('-- embed association (other -> self) --')
                     print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
-                    print('self_unmapped = {!r}'.format(self_unmapped))
-                    print('other_unmapped = {!r}'.format(other_unmapped))
-                    print('-- end embed mapping --')
+                    print('self_unmapped = {}'.format(ub.repr2(self_unmapped, nl=1)))
+                    print('other_unmapped = {}'.format(ub.repr2(other_unmapped, nl=1)))
+                    print('-- end embed association --')
 
                 model_state_dict = ub.map_keys(lambda k: mapping.get(k, k), model_state_dict)
             else:
