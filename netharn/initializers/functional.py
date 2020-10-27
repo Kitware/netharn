@@ -227,16 +227,24 @@ def load_partial_state(model, model_state_dict, leftover=None,
 
     Example:
         >>> import netharn as nh
-        >>> self1 = nh.models.ToyNet2d(input_channels=1, num_classes=10)
-        >>> self2 = nh.models.ToyNet2d(input_channels=3, num_classes=2)
-        >>> self1.hack_param1 = torch.nn.Parameter(torch.rand(1))
-        >>> self2.hack_param1 = torch.nn.Parameter(torch.rand(3))
-        >>> self2.hack_param2 = torch.nn.Parameter(torch.rand(3))
-        >>> model_state_dict = self1.state_dict()
-        >>> load_partial_state(self2, model_state_dict)
-        >>> load_partial_state(self2, model_state_dict, leftover=torch.nn.init.kaiming_normal_)
+        >>> # ---
+        >>> model_other = nh.models.ToyNet2d(input_channels=1, num_classes=10)
+        >>> model_other.hack_param1 = torch.nn.Parameter(torch.rand(1))
+        >>> model_other.hack_param3 = torch.nn.Parameter(torch.rand(3))
+        >>> model_other.hack_param5 = torch.nn.Parameter(torch.rand(3))
+        >>> # ---
+        >>> model_self = nh.models.ToyNet2d(input_channels=3, num_classes=2)
+        >>> model_self.hack_param1 = torch.nn.Parameter(torch.rand(3))
+        >>> model_self.hack_param2 = torch.nn.Parameter(torch.rand(3))
+        >>> model_self.hack_param4 = torch.nn.Parameter(torch.rand(3))
+        >>> # ---
+        >>> model_state_dict = model_other.state_dict()
+        >>> load_partial_state(model_self, model_state_dict)
+        >>> load_partial_state(model_self, model_state_dict, leftover=torch.nn.init.kaiming_normal_)
+        >>> _ = load_partial_state(model_self, model_state_dict, leftover=torch.nn.init.kaiming_normal_, association='embedding')
 
     Example:
+        >>> from netharn.initializers.functional import *  # NOQA
         >>> import netharn as nh
         >>> xpu = nh.XPU(None)
         >>> self1 = nh.models.ToyNet2d()
@@ -248,7 +256,7 @@ def load_partial_state(model, model_state_dict, leftover=None,
         >>> extra_state_dict['stats'] = ub.peek(extra_state_dict.values()).clone()
         >>> model = self2
         >>> model_state_dict = extra_state_dict
-        >>> load_partial_state(self2, extra_state_dict)
+        >>> load_partial_state(self2, extra_state_dict, association='embedding')
 
     Example:
         >>> # xdoctest: +REQUIRES(--slow)
@@ -331,8 +339,9 @@ def load_partial_state(model, model_state_dict, leftover=None,
             from netharn.initializers._nx_ext.path_embedding import paths_to_otree
             print(forest_str(paths_to_otree(other_keys, '.')))
 
-        common_keys = other_keys.intersection(self_keys)
-        if not common_keys:
+        # common_keys = other_keys.intersection(self_keys)
+        # if not common_keys:
+        if not other_keys.issubset(self_keys):
             if association == 'strict':
                 pass
             elif association == 'module-hack':
@@ -395,12 +404,12 @@ def load_partial_state(model, model_state_dict, leftover=None,
                             p = p.replace('.num_batches_tracked', ':num_batches_tracked')
                             p = p.replace('.running_mean', ':running_mean')
                             p = p.replace('.running_var', ':running_var')
-                            p = p.replace('.conv1', ':conv1')
-                            p = p.replace('.conv2', ':conv2')
-                            p = p.replace('.conv3', ':conv3')
-                            p = p.replace('.bn1', ':bn1')
-                            p = p.replace('.bn2', ':bn2')
-                            p = p.replace('.bn3', ':bn3')
+                            # p = p.replace('.conv1', ':conv1')
+                            # p = p.replace('.conv2', ':conv2')
+                            # p = p.replace('.conv3', ':conv3')
+                            # p = p.replace('.bn1', ':bn1')
+                            # p = p.replace('.bn2', ':bn2')
+                            # p = p.replace('.bn3', ':bn3')
                             new_paths.append(p)
                         return new_paths
 
@@ -413,7 +422,14 @@ def load_partial_state(model, model_state_dict, leftover=None,
                 subpaths2 = [p.replace(':', '.') for p in subpaths2]
                 mapping = ub.dzip(subpaths1, subpaths2)
                 if verbose > 1:
+                    other_unmapped = other_keys - set(mapping.keys())
+                    self_unmapped = self_keys - set(mapping.values())
+                    print('-- embed mapping (other -> self) --')
                     print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+                    print('self_unmapped = {!r}'.format(self_unmapped))
+                    print('other_unmapped = {!r}'.format(other_unmapped))
+                    print('-- end embed mapping --')
+
                 model_state_dict = ub.map_keys(lambda k: mapping.get(k, k), model_state_dict)
             else:
                 raise KeyError(association)
@@ -778,8 +794,8 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
     tree2 = paths_to_tree(paths2)
 
     # from netharn.initializers._nx_ext.tree_embedding import forest_str
-    print(len(tree1.nodes))
-    print(len(tree2.nodes))
+    # print(len(tree1.nodes))
+    # print(len(tree2.nodes))
     # print(forest_str(tree1))
     # print(forest_str(tree2))
 
