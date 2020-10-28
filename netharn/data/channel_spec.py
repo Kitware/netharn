@@ -1,5 +1,6 @@
 import ubelt as ub
 import six
+import functools
 
 
 class ChannelSpec(ub.NiceRepr):
@@ -277,14 +278,16 @@ class ChannelSpec(ub.NiceRepr):
         }
         return item
 
-    def encode(self, item, axis=0):
+    def encode(self, item, axis=0, impl=1):
         """
         Given a dictionary containing preloaded components of the network
-        inputs, build a concatenated network representations of each input
-        stream.
+        inputs, build a concatenated (fused) network representations of each
+        input stream.
 
         Args:
-            item (Dict[str, Tensor]): a batch item containing unfused parts
+            item (Dict[str, Tensor]): a batch item containing unfused parts.
+                each key should be a single-stream (optionally early fused)
+                channel key.
             axis (int, default=0): concatenation dimension
 
         Returns:
@@ -302,23 +305,84 @@ class ChannelSpec(ub.NiceRepr):
             >>> }
             >>> # Complex Case
             >>> self = ChannelSpec('rgb,disparity,rgb|disparity|flowx|flowy,flowx|flowy')
-            >>> inputs = self.encode(item)
-            >>> input_shapes = ub.map_vals(lambda x: x.shape, inputs)
+            >>> fused = self.encode(item)
+            >>> input_shapes = ub.map_vals(lambda x: x.shape, fused)
             >>> print('input_shapes = {}'.format(ub.repr2(input_shapes, nl=1)))
             >>> # Simpler case
             >>> self = ChannelSpec('rgb|disparity')
+            >>> fused = self.encode(item)
+            >>> input_shapes = ub.map_vals(lambda x: x.shape, fused)
+            >>> print('input_shapes = {}'.format(ub.repr2(input_shapes, nl=1)))
+
+        Example:
+            >>> # Case where we have to break up early fused data
+            >>> from netharn.data.channel_spec import *  # NOQA
+            >>> import torch
+            >>> dims = (40, 40)
+            >>> item = {
+            >>>     'rgb|disparity': torch.rand(4, *dims),
+            >>>     'flowx': torch.rand(1, *dims),
+            >>>     'flowy': torch.rand(1, *dims),
+            >>> }
+            >>> # Complex Case
+            >>> self = ChannelSpec('rgb,disparity,rgb|disparity,rgb|disparity|flowx|flowy,flowx|flowy,flowx,disparity')
             >>> inputs = self.encode(item)
             >>> input_shapes = ub.map_vals(lambda x: x.shape, inputs)
             >>> print('input_shapes = {}'.format(ub.repr2(input_shapes, nl=1)))
+
+            >>> #self = ChannelSpec('rgb|disparity,flowx|flowy')
+            >>> import timerit
+            >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
+            >>> for timer in ti.reset('impl=simple'):
+            >>>     with timer:
+            >>>         inputs = self.encode(item, impl=0)
+            >>> for timer in ti.reset('impl=minimize-concat'):
+            >>>     with timer:
+            >>>         inputs = self.encode(item, impl=1)
+
+            import xdev
+            _ = xdev.profile_now(self.encode)(item, impl=1)
         """
         import torch
-        inputs = dict()
         parsed = self.parse()
-        unique = self.unique()
-        components = {k: item[k] for k in unique}
-        for key, parts in parsed.items():
-            inputs[key] = torch.cat([components[k] for k in parts], dim=axis)
-        return inputs
+        # unique = self.unique()
+
+        # TODO: This can be made much more efficient by determining if the
+        # channels item can be directly translated to the result inputs. We
+        # probably don't need to do the full decoding each and every time.
+
+        if impl == 1:
+            # Slightly more complex implementation that attempts to minimize
+            # concat operations.
+            item_keys = tuple(sorted(item.keys()))
+            parsed_items = tuple(sorted([(k, tuple(v)) for k, v in parsed.items()]))
+            new_fused_indices = _cached_single_fused_mapping(item_keys, parsed_items, axis=axis)
+
+            fused = {}
+            for key, idx_list in new_fused_indices.items():
+                parts = [item[item_key][item_sl] for item_key, item_sl in idx_list]
+                if len(parts) == 1:
+                    fused[key] = parts[0]
+                else:
+                    fused[key] = torch.cat(parts, dim=axis)
+        elif impl == 0:
+            # Simple implementation that always does the full break down of
+            # item components.
+            components = {}
+            # Determine the layout of the channels in the input item
+            key_specs = {key: ChannelSpec(key) for key in item.keys()}
+            for key, spec in key_specs.items():
+                decoded = spec.decode({key: item[key]}, axis=axis)
+                for subkey, subval in decoded.items():
+                    components[subkey] = subval
+
+            fused = {}
+            for key, parts in parsed.items():
+                fused[key] = torch.cat([components[k] for k in parts], dim=axis)
+        else:
+            raise KeyError(impl)
+
+        return fused
 
     def decode(self, inputs, axis=1):
         """
@@ -379,6 +443,80 @@ class ChannelSpec(ub.NiceRepr):
                 idx1 = idx2
                 component_indices[part] = (key, index)
         return component_indices
+
+
+@functools.lru_cache(maxsize=None)
+def _cached_single_fused_mapping(item_keys, parsed_items, axis=0):
+    item_indices = {}
+    for key in item_keys:
+        key_idxs = _cached_single_stream_idxs(key, axis=axis)
+        for subkey, subsl in key_idxs.items():
+            item_indices[subkey] = subsl
+
+    fused_indices = {}
+    for key, parts in parsed_items:
+        fused_indices[key] = [item_indices[k] for k in parts]
+
+    new_fused_indices = {}
+    for key, idx_list in fused_indices.items():
+        # Determine which continguous slices can be merged into a
+        # single slice
+        prev_key = None
+        prev_sl = None
+
+        accepted = []
+        accum = []
+        for item_key, item_sl in idx_list:
+            if prev_key == item_key:
+                if prev_sl.stop == item_sl[-1].start and prev_sl.step == item_sl[-1].step:
+                    accum.append((item_key, item_sl))
+                    continue
+            if accum:
+                accepted.append(accum)
+                accum = []
+            prev_key = item_key
+            prev_sl = item_sl[-1]
+            accum.append((item_key, item_sl))
+        if accum:
+            accepted.append(accum)
+            accum = []
+
+        # Merge the accumulated contiguous slices
+        new_idx_list = []
+        for accum in accepted:
+            if len(accum) > 1:
+                item_key = accum[0][0]
+                first = accum[0][1]
+                last = accum[-1][1]
+                new_sl = list(first)
+                new_sl[-1] = slice(first[-1].start, last[-1].stop, last[-1].step)
+                new_idx_list.append((item_key, new_sl))
+            else:
+                new_idx_list.append(accum[0])
+        new_fused_indices[key] = new_idx_list
+    return new_fused_indices
+
+
+@functools.lru_cache(maxsize=None)
+def _cached_single_stream_idxs(key, axis=0):
+    """
+    hack for speed
+
+    axis = 0
+    key = 'rgb|disparity'
+
+    import timerit
+    ti = timerit.Timerit(100, bestof=10, verbose=2)
+    for timer in ti.reset('time'):
+        with timer:
+            _cached_single_stream_idxs(key, axis=axis)
+    for timer in ti.reset('time'):
+        with timer:
+            ChannelSpec(key).component_indices(axis=axis)
+    """
+    # concat operations.
+    key_idxs = ChannelSpec(key).component_indices(axis=axis)
+    return key_idxs
 
 
 def subsequence_index(oset1, oset2):

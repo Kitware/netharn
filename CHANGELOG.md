@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.5.11 - Unreleased
 
 
+### Fixed
+
+`ChannelSpec.encode` now correctly handles the case where the given input is prefused. 
+
+
 ## Version 0.5.10 - Released 2020-10-23
 
 
