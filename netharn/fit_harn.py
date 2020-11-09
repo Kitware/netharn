@@ -2251,9 +2251,10 @@ class CoreCallbacks(object):
     code at special places in the training loop. These are usually used for
     logging custom metrics and outputing visualizations.
 
-    Notes:
-        The following note lists the callbacks in roughly the order in which
-        they are called. The tree structure denotes loop nesting.
+    The following note lists the callbacks in roughly the order in which
+    they are called. The tree structure denotes loop nesting.
+
+    .. code::
 
         ├─ after_initialize (no default) - runs after FitHarn is initialized
         │  │
@@ -2279,7 +2280,8 @@ class CoreCallbacks(object):
         │  │         epoch finishes.  Any custom scalar metrics returned in a
         │  │         dictionary will be recorded by the FitHarn loggers.
         │  │
-        │  └─ after_epochs (no default) - runs after the
+        │  └─ after_epochs (no default) - runs after the all data splits are
+        │         finished with  the current epoch.
         │
         └─ on_complete (no default) - runs after the main loop is complete
 
