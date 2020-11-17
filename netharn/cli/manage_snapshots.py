@@ -560,12 +560,12 @@ if __name__ == '__main__':
 
         find . -iname "explit_checkpoints" -d
 
-        python ~/code/netharn/dev/manage_snapshots.py --mode=snapshots --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
-        python ~/code/netharn/dev/manage_snapshots.py --mode=runs --workdir=~/work/voc_yolo2/
-        python ~/code/netharn/dev/manage_snapshots.py --mode=monitor --workdir=~/work/voc_yolo2/
-        python ~/code/netharn/dev/manage_snapshots.py --mode=monitor --workdir=. -f
-        python ~/code/netharn/dev/manage_snapshots.py --mode=runs --workdir=.
-        python ~/code/netharn/dev/manage_snapshots.py --mode=snapshots --workdir=. --recent 2 --factor 40 -f
+        python -m netharn.cli.manage_snapshots --mode=snapshots --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
+        python -m netharn.cli.manage_snapshots --mode=runs --workdir=~/work/voc_yolo2/
+        python -m netharn.cli.manage_snapshots --mode=monitor --workdir=~/work/voc_yolo2/
+        python -m netharn.cli.manage_snapshots --mode=monitor --workdir=. -f
+        python -m netharn.cli.manage_snapshots --mode=runs --workdir=.
+        python -m netharn.cli.manage_snapshots --mode=snapshots --workdir=. --recent 2 --factor 40 -f
 
     Notes:
         # Remove random files

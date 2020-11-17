@@ -7,6 +7,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.5.11 - Unreleased
 
 
+### Added
+* `netharn.cli` subpackage and moved `list_deployed` and `manage_snapshot` command line tools from dev to there.
+
 ### Fixed
 
 `ChannelSpec.encode` now correctly handles the case where the given input is prefused. 

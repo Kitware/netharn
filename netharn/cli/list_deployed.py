@@ -55,6 +55,7 @@ def main(cmdline=True, **kw):
 if __name__ == '__main__':
     """
     CommandLine:
-        python ~/code/netharn/dev/list_deployed.py --workdir $HOME/work/netharn
+        python -m netharn.cli.list_deployed --workdir $HOME/work/netharn
+        python -m netharn.cli.list_deployed --workdir $HOME/work/bioharn
     """
     main()
