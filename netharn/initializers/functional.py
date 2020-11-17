@@ -677,7 +677,7 @@ def _best_prefix_transform(set1, target_set2):
     return found
 
 
-def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
+def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
     """
     CommandLine:
         xdoctest -m /home/joncrall/code/netharn/netharn/initializers/functional.py maximum_common_ordered_subpaths:0 --profile && cat profile_output.txt
@@ -689,9 +689,22 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
         >>> paths1 = sorted(resnet50.state_dict().keys())
         >>> paths2 = ['prefix.' + k for k in paths1]
         >>> paths2.append('extra_key')
-        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2)
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='embedding')
         >>> mapping = ub.dzip(subpaths1, subpaths2)
-        >>> print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> print('embedding mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='isomorphism')
+        >>> mapping = ub.dzip(subpaths1, subpaths2)
+        >>> print('isomorphism mapping = {}'.format(ub.repr2(mapping, nl=1)))
+
+        if 0:
+            import timerit
+            ti = timerit.Timerit(2, bestof=2, verbose=2)
+            for timer in ti.reset('embedding'):
+                with timer:
+                    maximum_common_ordered_subpaths(paths1, paths2, mode='embedding')
+            for timer in ti.reset('isomorphism'):
+                with timer:
+                    maximum_common_ordered_subpaths(paths1, paths2, mode='isomorphism')
 
     Example:
         >>> rng = None
@@ -737,9 +750,12 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
         >>>     # I think we allow labels to match if they have the same suffix
         >>> ]
         >>> sep = '.'
-        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep)
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='embedding')
         >>> mapping = ub.dzip(subpaths1, subpaths2)
-        >>> print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> print('embedding mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='isomorphism')
+        >>> mapping = ub.dzip(subpaths1, subpaths2)
+        >>> print('isomorphism mapping = {}'.format(ub.repr2(mapping, nl=1)))
 
 
     Example:
@@ -776,7 +792,7 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
     # import operator
     # eq = operator.eq
 
-    def paths_to_tree(paths):
+    def paths_to_otree(paths):
         tree = nx.OrderedDiGraph()
         for path in sorted(paths):
             parts = tuple(path.split(sep))
@@ -790,8 +806,8 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
                 tree.add_edge(u, v)
         return tree
 
-    tree1 = paths_to_tree(paths1)
-    tree2 = paths_to_tree(paths2)
+    tree1 = paths_to_otree(paths1)
+    tree2 = paths_to_otree(paths2)
 
     # from netharn.initializers._nx_ext.tree_embedding import forest_str
     # print(len(tree1.nodes))
@@ -804,9 +820,18 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
     #     DiGM.is_isomorphic()
     #     list(DiGM.subgraph_isomorphisms_iter())
 
-    from netharn.initializers import _nx_ext
-    subtree1, subtree2 = _nx_ext.maximum_common_ordered_tree_embedding(tree1, tree2, node_affinity=node_affinity)
-    # subtree1, subtree2 = _nx_ext.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
+    if 0:
+        from netharn.initializers import _nx_ext
+        assert mode == 'embedding'
+        subtree1, subtree2 = _nx_ext.maximum_common_ordered_tree_embedding(tree1, tree2, node_affinity=node_affinity)
+    else:
+        from netharn.initializers import _nx_ext_v2
+        if mode == 'embedding':
+            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_embedding(tree1, tree2, node_affinity=node_affinity)
+        elif mode == 'isomorphism':
+            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
+        else:
+            raise KeyError(mode)
 
     subpaths1 = [sep.join(node) for node in subtree1.nodes if subtree1.out_degree[node] == 0]
     subpaths2 = [sep.join(node) for node in subtree2.nodes if subtree2.out_degree[node] == 0]

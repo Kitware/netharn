@@ -9,6 +9,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 * `netharn.cli` subpackage and moved `list_deployed` and `manage_snapshot` command line tools from dev to there.
+* Latest common subtree embedding isomorphism work while networkx PR is in review
 
 ### Fixed
 
