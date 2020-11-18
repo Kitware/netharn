@@ -277,8 +277,8 @@ def _devcheck_remove_dead_runs(workdir, dry=True, dead_num_snap_thresh=10,
     Ignore:
         import sys, ubelt
         sys.path.append(ubelt.expandpath('~/code/netharn/dev'))
-        from manage_snapshots import *  # NOQA
-        from manage_snapshots import _devcheck_remove_dead_runs, _devcheck_manage_snapshots
+        from manage_runs import *  # NOQA
+        from manage_runs import _devcheck_remove_dead_runs, _devcheck_manage_snapshots
         workdir = '.'
         import xdev
         globals().update(xdev.get_func_kwargs(_devcheck_remove_dead_runs))
@@ -521,7 +521,7 @@ def _devcheck_manage_snapshots(workdir, recent=5, factor=10, dry=True):
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        prog='manage_snapshots',
+        prog='manage_runs',
         description=ub.codeblock(
             '''
             Cleanup snapshots and dead runs produced by netharn
@@ -556,16 +556,17 @@ def main():
 if __name__ == '__main__':
     """
     CommandLine:
-        python ~/code/netharn/dev/manage_snapshots.py
+        python ~/code/netharn/dev/manage_runs.py
 
         find . -iname "explit_checkpoints" -d
 
-        python -m netharn.cli.manage_snapshots --mode=snapshots --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
-        python -m netharn.cli.manage_snapshots --mode=runs --workdir=~/work/voc_yolo2/
-        python -m netharn.cli.manage_snapshots --mode=monitor --workdir=~/work/voc_yolo2/
-        python -m netharn.cli.manage_snapshots --mode=monitor --workdir=. -f
-        python -m netharn.cli.manage_snapshots --mode=runs --workdir=.
-        python -m netharn.cli.manage_snapshots --mode=snapshots --workdir=. --recent 2 --factor 40 -f
+        python -m netharn.cli.manage_runs --mode=snapshots --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
+        python -m netharn.cli.manage_runs --mode=monitor --workdir=~/work/voc_yolo2/
+        python -m netharn.cli.manage_runs --mode=monitor --workdir=. -f
+        python -m netharn.cli.manage_runs --mode=runs --workdir=.
+        python -m netharn.cli.manage_runs --mode=snapshots --workdir=. --recent 2 --factor 40 -f
+
+        python -m netharn.cli.manage_runs --mode=runs --workdir=~/work/cifar/
 
     Notes:
         # Remove random files
