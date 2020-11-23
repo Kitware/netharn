@@ -689,6 +689,7 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
         >>> paths1 = sorted(resnet50.state_dict().keys())
         >>> paths2 = ['prefix.' + k for k in paths1]
         >>> paths2.append('extra_key')
+        >>> sep = '.'
         >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='embedding')
         >>> mapping = ub.dzip(subpaths1, subpaths2)
         >>> print('embedding mapping = {}'.format(ub.repr2(mapping, nl=1)))

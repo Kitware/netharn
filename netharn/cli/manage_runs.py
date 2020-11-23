@@ -276,15 +276,6 @@ class Session(ub.NiceRepr):
             info['last_modified'] = dt
         return info, details
 
-    def evaluations(session):
-        """
-        Look to see if checkpoints in this run were evaluated on tests sets
-        """
-        eval_dpath = join(session.dpath, 'eval')
-        if exists(eval_dpath):
-            pass
-        pass
-
 
 def _devcheck_remove_dead_runs(workdir, dry=True, dead_num_snap_thresh=10,
                                safe_num_days=7):
@@ -539,6 +530,7 @@ def _devcheck_manage_checkpoints(workdir, recent=5, factor=10, dry=True):
 
 def _summarize_workdir(workdir):
     """
+    workdir = ub.expandpath('~/work/voc_yolo2')
     """
     all_sessions = collect_sessions(workdir)
 
