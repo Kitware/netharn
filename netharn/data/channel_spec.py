@@ -330,6 +330,7 @@ class ChannelSpec(ub.NiceRepr):
             >>> input_shapes = ub.map_vals(lambda x: x.shape, inputs)
             >>> print('input_shapes = {}'.format(ub.repr2(input_shapes, nl=1)))
 
+            >>> # xdoctest: +REQUIRES(--bench)
             >>> #self = ChannelSpec('rgb|disparity,flowx|flowy')
             >>> import timerit
             >>> ti = timerit.Timerit(100, bestof=10, verbose=2)
@@ -505,6 +506,7 @@ def _cached_single_stream_idxs(key, axis=0):
     axis = 0
     key = 'rgb|disparity'
 
+    # xdoctest: +REQUIRES(--bench)
     import timerit
     ti = timerit.Timerit(100, bestof=10, verbose=2)
     for timer in ti.reset('time'):
