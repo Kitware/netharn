@@ -115,3 +115,9 @@ src/
 _skbuild
 
 .idea/*
+
+*.pkl
+*.pkl.meta
+netharn/initializers/_nx_ext_v2/balanced_isomorphism_cython.cpp
+netharn/initializers/_nx_ext_v2/balanced_embedding_cython.cpp
+pip-wheel-metadata/

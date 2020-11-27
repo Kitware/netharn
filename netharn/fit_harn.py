@@ -1336,9 +1336,11 @@ class ScheduleMixin(object):
             harn._close_prog()
             harn.info('Maximum harn.epoch reached, terminating ...')
             return True
-        if harn.monitor.is_done():
+        done_status = harn.monitor.is_done()
+        if done_status:
             harn._close_prog()
-            harn.info('Validation set is not improving, terminating ...')
+            harn.info(done_status)
+            # harn.info('Validation set is not improving, terminating ...')
             return True
         return False
 
