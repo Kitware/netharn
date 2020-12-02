@@ -3,6 +3,7 @@ Simple script that prints the deployed models in a given netharn work directory
 """
 import scriptconfig as scfg
 import ubelt as ub
+import os
 import glob
 from os.path import join, exists
 
@@ -15,6 +16,19 @@ class ListDeployedConfig(scfg.Config):
         'workdir': scfg.Value(None, help='work directory'),
         'name': scfg.Value(None, help='"nice" name of the run'),
     }
+
+
+def get_file_info(fpath):
+    from collections import OrderedDict
+    statbuf = os.stat(fpath)
+
+    info = OrderedDict([
+        # ('filesize', get_file_nBytes_str(fpath)),
+        ('last_modified', statbuf.st_mtime),
+        ('last_accessed', statbuf.st_atime),
+        ('created', statbuf.st_ctime),
+    ])
+    return info
 
 
 def main(cmdline=True, **kw):
@@ -39,8 +53,20 @@ def main(cmdline=True, **kw):
             dpath_exists = exists(named_run_dpath)
             print('dpath_exists = {!r}'.format(dpath_exists))
 
-        # TODO: do we want to remove deploy.zip symlinks here?
         deployed_fpaths = glob.glob(join(named_run_dpath, '*/*.zip'))
+
+        REMOVE_LINKS = 1
+        # TODO: do we always want to remove deploy.zip symlinks here?
+        if REMOVE_LINKS:
+            deployed_fpaths = [
+                fpath for fpath in deployed_fpaths if not os.path.islink(fpath)]
+
+        sortby = 'last_modified'
+        if sortby:
+            deployed_fpaths = sorted(
+                deployed_fpaths,
+                key=lambda fpath: get_file_info(fpath)[sortby]
+            )
 
         SHRINK = 1
         if SHRINK:
@@ -55,6 +81,7 @@ def main(cmdline=True, **kw):
 if __name__ == '__main__':
     """
     CommandLine:
-        python ~/code/netharn/dev/list_deployed.py --workdir $HOME/work/netharn
+        python -m netharn.cli.list_deployed --workdir $HOME/work/netharn
+        python -m netharn.cli.list_deployed --workdir $HOME/work/bioharn
     """
     main()

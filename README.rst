@@ -177,6 +177,65 @@ used to train it.  This makes it fast and simple for research results to be
 externally verified and moved into production.
 
 
+Core Callback Structure
+=======================
+
+Netharn is designed around inheriting from the ``netharn.FitHarn`` class,
+overloading several methods, and then creating an instance of your custom
+FitHarn with specific hyperparameters.
+
+FitHarn allows you to customize the execution of the training loop via its
+callback system. You write a callback simply overloading one of these
+methods. There are callbacks with and without default behavior.
+
+The ones with default behavior directly influence the learning process.
+While these don't have to be overwritten, they usually should be as
+different tasks require slightly different ways of moving data through the
+training pipeline.
+
+The ones without default behavior allow the developer to execute custom
+code at special places in the training loop. These are usually used for
+logging custom metrics and outputing visualizations.
+
+The following note lists the callbacks in roughly the order in which they are
+called by the ``FitHarn.run`` method. The tree structure denotes loop nesting.
+
+.. code-block:: 
+
+    ├─ after_initialize (no default) - runs after FitHarn is initialized
+    │  │
+    │  ├─ before_epochs (no default) - runs once before all train/vali/test
+    │  │  │    epochs on each iteration
+    │  │  │
+    │  │  ├─ prepare_epoch (no default) - runs before each train, vali,
+    │  │  │  │    and test epoch
+    │  │  │  │
+    │  │  │  ├─ prepare_batch (has default behavior) - transfer data from
+    │  │  │  │    CPU to the XPU
+    │  │  │  │
+    │  │  │  ├─ run_batch (has default behavior) - execute the forward pass
+    │  │  │  │    and compute the loss
+    │  │  │  │
+    │  │  │  ├─ backpropogate (has default behavior) - accumulate gradients
+    │  │  │  │    and take an optimization step
+    │  │  │  │
+    │  │  │  └─ on_batch (no default) - runs after `run_batch` and
+    │  │  │       `backpropogate` on every batch
+    │  │  │
+    │  │  └─ on_epoch (no default) - runs after each train, vali, and test
+    │  │         epoch finishes.  Any custom scalar metrics returned in a
+    │  │         dictionary will be recorded by the FitHarn loggers.
+    │  │
+    │  └─ after_epochs (no default) - runs after the all data splits are
+    │         finished with  the current epoch.
+    │
+    └─ on_complete (no default) - runs after the main loop is complete
+
+
+Given a custom FitHarn class see the "Toy Example" section for details on how
+to construct hyperparamters and execute the training loop (i.e.
+``FitHarn.run``).
+
 
 Developer Setup:
 ================
@@ -587,6 +646,14 @@ both, but in the future I do see one consuming functionality of the other.
 Currently (2020-10-21), pytorch-lightning does distributed training better,
 whereas netharn's logging and hyperparameter management outshines
 pytorch-lightning.
+
+
+Consumer Packages
+=================
+
+The bioharn package (https://gitlab.kitware.com/jon.crall/bioharn) implements
+extensions of the classifier and detector examples in the netharn/examples
+folder as well as prediction and evaluation scripts.
 
 
 

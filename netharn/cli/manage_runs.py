@@ -200,36 +200,37 @@ class Session(ub.NiceRepr):
     """
     def __init__(session, dpath):
         session.dpath = dpath
-        info, details = session_info(session.dpath)
+        info, details = session.build_info()
         session.info = info
         session.details = details
 
     def __nice__(session):
         return repr(session.info)
 
+    @ub.memoize_property
+    def checkpoints(session):
+        snap_dpath = join(session.dpath, 'torch_snapshots')
+        check_dpath = join(session.dpath, 'checkpoints')
+        if exists(check_dpath):
+            checkpoints = os.listdir(check_dpath) if exists(check_dpath) else []
+            checkpoints = [join(check_dpath, fname) for fname in checkpoints]
+        elif exists(snap_dpath):
+            # Old snapshot directory name
+            checkpoints = os.listdir(snap_dpath) if exists(snap_dpath) else []
+            checkpoints = [join(snap_dpath, fname) for fname in checkpoints]
+        else:
+            checkpoints = []
+        return checkpoints
 
-def session_info(dpath):
-    """
-    Stats about a training session
-    """
-    info = {}
-    snap_dpath = join(dpath, 'torch_snapshots')
-    check_dpath = join(dpath, 'checkpoints')
-    if exists(check_dpath):
-        snapshots = os.listdir(check_dpath) if exists(check_dpath) else []
-        snapshots = [join(check_dpath, fname) for fname in snapshots]
-    elif exists(snap_dpath):
-        # Old snapshot directory name
-        snapshots = os.listdir(snap_dpath) if exists(snap_dpath) else []
-        snapshots = [join(snap_dpath, fname) for fname in snapshots]
-    else:
-        snapshots = []
-    dpath = realpath(dpath)
+    @ub.memoize_property
+    def name(session):
+        return basename(dirname(session.dpath))
 
-    if True:
+    @ub.memoize_property
+    def is_linked(session):
         # Determine if we are pointed to by a "name" directory or not
-        name = basename(dirname(dpath))
-        info['name'] = name
+        dpath = session.dpath
+        name = session.name
         fitdir = dirname(dirname(dirname(dpath)))
         target = None
         name_dpath = join(fitdir, 'name', name)
@@ -245,40 +246,49 @@ def session_info(dpath):
                     target = realpath(ub.util_links._readlink(nice_dpath))
                 except Exception:
                     target = None
-        info['linked'] = (target == dpath)
+        linked = (target == dpath)
+        return linked
 
-    best_snapshot_fpath = join(dpath, 'best_snapshot.pt')
-    details = {}
-    details['best_snapshot'] = best_snapshot_fpath if exists(best_snapshot_fpath) else None
-    details['deployed'] = [p for p in glob.glob(join(dpath, '*.zip')) if not ub.util_links.islink(p)]
-    details['snapshots'] = snapshots
+    def build_info(session):
+        """
+        Stats about a training session
+        """
+        info = {}
+        info['linked'] = session.is_linked
 
-    info['dpath'] = dpath
-    info['has_deploy'] = bool(details['deployed'])
-    info['has_best'] = bool(details['best_snapshot'])
-    info['num_snapshots'] = len(snapshots)
-    info['size'] = float(ub.cmd('du -s ' + dpath)['out'].split('\t')[0])
-    if len(snapshots) > 0:
-        contents = [join(dpath, c) for c in os.listdir(dpath)]
-        timestamps = [get_file_info(c)['last_modified'] for c in contents if exists(c)]
-        unixtime = max(timestamps)
-        dt = datetime.datetime.fromtimestamp(unixtime)
-        info['last_modified'] = dt
-    return info, details
+        dpath = realpath(session.dpath)
+        best_snapshot_fpath = join(dpath, 'best_snapshot.pt')
+        details = {}
+        details['best_snapshot'] = best_snapshot_fpath if exists(best_snapshot_fpath) else None
+        details['deployed'] = [p for p in glob.glob(join(dpath, '*.zip')) if not ub.util_links.islink(p)]
+        details['checkpoints'] = session.checkpoints
+
+        info['dpath'] = dpath
+        info['has_deploy'] = bool(details['deployed'])
+        info['has_best'] = bool(details['best_snapshot'])
+        info['num_snapshots'] = len(details['checkpoints'])
+        info['size'] = float(ub.cmd('du -s ' + dpath)['out'].split('\t')[0])
+        if len(details['checkpoints']) > 0:
+            contents = [join(dpath, c) for c in os.listdir(dpath)]
+            timestamps = [get_file_info(c)['last_modified'] for c in contents if exists(c)]
+            unixtime = max(timestamps)
+            dt = datetime.datetime.fromtimestamp(unixtime)
+            info['last_modified'] = dt
+        return info, details
 
 
 def _devcheck_remove_dead_runs(workdir, dry=True, dead_num_snap_thresh=10,
                                safe_num_days=7):
     """
-    Look for directories in runs that have no / very few snapshots and no eval
+    Look for directories in runs that have no / very few checkpoints and no eval
     metrics that have a very old modified time and put them into a list as
     candidates for deletion.
 
     Ignore:
         import sys, ubelt
         sys.path.append(ubelt.expandpath('~/code/netharn/dev'))
-        from manage_snapshots import *  # NOQA
-        from manage_snapshots import _devcheck_remove_dead_runs, _devcheck_manage_snapshots
+        from manage_runs import *  # NOQA
+        from manage_runs import _devcheck_remove_dead_runs, _devcheck_manage_checkpoints
         workdir = '.'
         import xdev
         globals().update(xdev.get_func_kwargs(_devcheck_remove_dead_runs))
@@ -420,16 +430,16 @@ def _devcheck_manage_monitor(workdir, dry=True):
             ub.delete(p)
 
 
-def _devcheck_manage_snapshots(workdir, recent=5, factor=10, dry=True):
+def _devcheck_manage_checkpoints(workdir, recent=5, factor=10, dry=True):
     """
-    Sometimes netharn produces too many snapshots. The Monitor class attempts
+    Sometimes netharn produces too many checkpoints. The Monitor class attempts
     to prevent this, but its not perfect. So, sometimes you need to manually
     clean up. This code snippet serves as a template for doing so.
 
     I recommend using IPython to do this following this code as a guide.
     Unfortunately, I don't have a safe automated way of doing this yet.
 
-    The basic code simply lists all snapshots that you have. Its then your job
+    The basic code simply lists all checkpoints that you have. Its then your job
     to find a huerstic to remove the ones you don't need.
 
     Note:
@@ -455,10 +465,10 @@ def _devcheck_manage_snapshots(workdir, recent=5, factor=10, dry=True):
     all_remove = []
 
     for session in all_sessions:
-        snapshots = session.details['snapshots']
+        checkpoints = session.details['checkpoints']
         epoch_to_snap = {}
         extra_types = {'prefix': parse.with_pattern('.*')(ub.identity)}
-        for path in snapshots:
+        for path in checkpoints:
             parsed = parse.parse('{:prefix}_epoch_{num:d}.pt', path, extra_types)
             if parsed:
                 epoch = int(parsed.named['num'])
@@ -509,7 +519,7 @@ def _devcheck_manage_snapshots(workdir, recent=5, factor=10, dry=True):
         total += os.path.getsize(path)
 
     if dry:
-        print('Cleanup would delete {} snapshots and free {}'.format(len(all_remove), byte_str(total)))
+        print('Cleanup would delete {} checkpoints and free {}'.format(len(all_remove), byte_str(total)))
         print('Use -f to confirm and force cleanup')
     else:
         print('About to free {}'.format(byte_str(total)))
@@ -518,13 +528,51 @@ def _devcheck_manage_snapshots(workdir, recent=5, factor=10, dry=True):
             ub.delete(path)
 
 
+def _summarize_workdir(workdir):
+    """
+    workdir = ub.expandpath('~/work/voc_yolo2')
+    """
+    all_sessions = collect_sessions(workdir)
+
+    all_sessions = sorted(all_sessions, key=lambda s: s.info['last_modified'].timestamp() if s.info.get('last_modified') else -1)
+    print('Checking sessions = {}'.format(ub.repr2(all_sessions, nl=1)))
+
+    session = all_sessions[-1]
+
+    def evaluations(session):
+        """
+        Look to see if checkpoints in this run were evaluated on tests sets
+        """
+        import pathlib
+        base_eval_dpath = join(session.dpath, 'eval')
+        eval_runs = []
+        if exists(base_eval_dpath):
+            eval_dpaths = list(glob.glob(join(base_eval_dpath, '*', '*', '*')))
+            for eval_dpath in eval_dpaths:
+                pred_dpath = pathlib.Path(join(eval_dpath, 'pred'))
+                has_contents = next(pred_dpath.iterdir(), None)
+                if has_contents:
+                    eval_info = {
+                        'pred_dpath': pred_dpath,
+                    }
+                    eval_runs.append(eval_info)
+        return eval_runs
+
+    for session in all_sessions:
+        eval_runs = evaluations(session)
+        session.details['eval_runs'] = eval_runs
+        session.info['num_evals'] = len(eval_runs)
+
+    print('Checking sessions = {}'.format(ub.repr2(all_sessions, nl=1)))
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(
-        prog='manage_snapshots',
+        prog='manage_runs',
         description=ub.codeblock(
             '''
-            Cleanup snapshots and dead runs produced by netharn
+            Summarize, cleanup, and mange runs in a workdir produced by netharn
             ''')
     )
     parser.add_argument(*('-w', '--workdir'), type=str,
@@ -534,7 +582,15 @@ def main():
     # parser.add_argument(*('-n', '--dry'), help='dry run', action='store_true')
     parser.add_argument(*('--recent',), help='num recent to keep', type=int, default=100)
     parser.add_argument(*('--factor',), help='keep one every <factor> epochs', type=int, default=1)
-    parser.add_argument('--mode', help='either runs or shapshots', default='snapshots')
+
+    valid_modes = [
+        'clean_runs',
+        'clean_checkpoints',
+        'clean_monitor',
+        'summarize',
+    ]
+
+    parser.add_argument('--mode', help='valid modes are {}'.format(', '.join(valid_modes)), default='summarize')
 
     args, unknown = parser.parse_known_args()
     ns = args.__dict__.copy()
@@ -543,12 +599,14 @@ def main():
     mode = ns.pop('mode')
     ns['workdir'] = ub.expandpath(ns['workdir'])
 
-    if mode == 'runs':
+    if mode == 'clean_runs':
         _devcheck_remove_dead_runs(workdir=ns['workdir'], dry=ns['dry'])
-    elif mode == 'snapshots':
-        _devcheck_manage_snapshots(**ns)
-    elif mode == 'monitor':
+    elif mode == 'clean_checkpoints':
+        _devcheck_manage_checkpoints(**ns)
+    elif mode == 'clean_monitor':
         _devcheck_manage_monitor(workdir=ns['workdir'], dry=ns['dry'])
+    elif mode == 'summarize':
+        _summarize_workdir(workdir=ns['workdir'])
     else:
         raise KeyError(mode)
 
@@ -556,16 +614,19 @@ def main():
 if __name__ == '__main__':
     """
     CommandLine:
-        python ~/code/netharn/dev/manage_snapshots.py
+        python ~/code/netharn/dev/manage_runs.py
 
         find . -iname "explit_checkpoints" -d
 
-        python ~/code/netharn/dev/manage_snapshots.py --mode=snapshots --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
-        python ~/code/netharn/dev/manage_snapshots.py --mode=runs --workdir=~/work/voc_yolo2/
-        python ~/code/netharn/dev/manage_snapshots.py --mode=monitor --workdir=~/work/voc_yolo2/
-        python ~/code/netharn/dev/manage_snapshots.py --mode=monitor --workdir=. -f
-        python ~/code/netharn/dev/manage_snapshots.py --mode=runs --workdir=.
-        python ~/code/netharn/dev/manage_snapshots.py --mode=snapshots --workdir=. --recent 2 --factor 40 -f
+        python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
+        python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=~/work/voc_yolo2/
+        python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=. -f
+        python -m netharn.cli.manage_runs --mode=clean_runs --workdir=.
+        python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=. --recent 2 --factor 40 -f
+
+        python -m netharn.cli.manage_runs --mode=clean_runs --workdir=~/work/cifar/
+
+        python -m netharn.cli.manage_runs --mode=summarize --workdir=~/work/netharn/
 
     Notes:
         # Remove random files

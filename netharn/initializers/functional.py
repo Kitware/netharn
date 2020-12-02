@@ -227,16 +227,24 @@ def load_partial_state(model, model_state_dict, leftover=None,
 
     Example:
         >>> import netharn as nh
-        >>> self1 = nh.models.ToyNet2d(input_channels=1, num_classes=10)
-        >>> self2 = nh.models.ToyNet2d(input_channels=3, num_classes=2)
-        >>> self1.hack_param1 = torch.nn.Parameter(torch.rand(1))
-        >>> self2.hack_param1 = torch.nn.Parameter(torch.rand(3))
-        >>> self2.hack_param2 = torch.nn.Parameter(torch.rand(3))
-        >>> model_state_dict = self1.state_dict()
-        >>> load_partial_state(self2, model_state_dict)
-        >>> load_partial_state(self2, model_state_dict, leftover=torch.nn.init.kaiming_normal_)
+        >>> # ---
+        >>> model_other = nh.models.ToyNet2d(input_channels=1, num_classes=10)
+        >>> model_other.hack_param1 = torch.nn.Parameter(torch.rand(1))
+        >>> model_other.hack_param3 = torch.nn.Parameter(torch.rand(3))
+        >>> model_other.hack_param5 = torch.nn.Parameter(torch.rand(3))
+        >>> # ---
+        >>> model_self = nh.models.ToyNet2d(input_channels=3, num_classes=2)
+        >>> model_self.hack_param1 = torch.nn.Parameter(torch.rand(3))
+        >>> model_self.hack_param2 = torch.nn.Parameter(torch.rand(3))
+        >>> model_self.hack_param4 = torch.nn.Parameter(torch.rand(3))
+        >>> # ---
+        >>> model_state_dict = model_other.state_dict()
+        >>> load_partial_state(model_self, model_state_dict)
+        >>> load_partial_state(model_self, model_state_dict, leftover=torch.nn.init.kaiming_normal_)
+        >>> _ = load_partial_state(model_self, model_state_dict, leftover=torch.nn.init.kaiming_normal_, association='embedding')
 
     Example:
+        >>> from netharn.initializers.functional import *  # NOQA
         >>> import netharn as nh
         >>> xpu = nh.XPU(None)
         >>> self1 = nh.models.ToyNet2d()
@@ -248,7 +256,7 @@ def load_partial_state(model, model_state_dict, leftover=None,
         >>> extra_state_dict['stats'] = ub.peek(extra_state_dict.values()).clone()
         >>> model = self2
         >>> model_state_dict = extra_state_dict
-        >>> load_partial_state(self2, extra_state_dict)
+        >>> load_partial_state(self2, extra_state_dict, association='embedding')
 
     Example:
         >>> # xdoctest: +REQUIRES(--slow)
@@ -331,8 +339,9 @@ def load_partial_state(model, model_state_dict, leftover=None,
             from netharn.initializers._nx_ext.path_embedding import paths_to_otree
             print(forest_str(paths_to_otree(other_keys, '.')))
 
-        common_keys = other_keys.intersection(self_keys)
-        if not common_keys:
+        # common_keys = other_keys.intersection(self_keys)
+        # if not common_keys:
+        if not other_keys.issubset(self_keys):
             if association == 'strict':
                 pass
             elif association == 'module-hack':
@@ -395,12 +404,12 @@ def load_partial_state(model, model_state_dict, leftover=None,
                             p = p.replace('.num_batches_tracked', ':num_batches_tracked')
                             p = p.replace('.running_mean', ':running_mean')
                             p = p.replace('.running_var', ':running_var')
-                            p = p.replace('.conv1', ':conv1')
-                            p = p.replace('.conv2', ':conv2')
-                            p = p.replace('.conv3', ':conv3')
-                            p = p.replace('.bn1', ':bn1')
-                            p = p.replace('.bn2', ':bn2')
-                            p = p.replace('.bn3', ':bn3')
+                            # p = p.replace('.conv1', ':conv1')
+                            # p = p.replace('.conv2', ':conv2')
+                            # p = p.replace('.conv3', ':conv3')
+                            # p = p.replace('.bn1', ':bn1')
+                            # p = p.replace('.bn2', ':bn2')
+                            # p = p.replace('.bn3', ':bn3')
                             new_paths.append(p)
                         return new_paths
 
@@ -413,7 +422,14 @@ def load_partial_state(model, model_state_dict, leftover=None,
                 subpaths2 = [p.replace(':', '.') for p in subpaths2]
                 mapping = ub.dzip(subpaths1, subpaths2)
                 if verbose > 1:
+                    other_unmapped = other_keys - set(mapping.keys())
+                    self_unmapped = self_keys - set(mapping.values())
+                    print('-- embed association (other -> self) --')
                     print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+                    print('self_unmapped = {}'.format(ub.repr2(self_unmapped, nl=1)))
+                    print('other_unmapped = {}'.format(ub.repr2(other_unmapped, nl=1)))
+                    print('-- end embed association --')
+
                 model_state_dict = ub.map_keys(lambda k: mapping.get(k, k), model_state_dict)
             else:
                 raise KeyError(association)
@@ -661,7 +677,7 @@ def _best_prefix_transform(set1, target_set2):
     return found
 
 
-def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
+def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
     """
     CommandLine:
         xdoctest -m /home/joncrall/code/netharn/netharn/initializers/functional.py maximum_common_ordered_subpaths:0 --profile && cat profile_output.txt
@@ -673,9 +689,23 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
         >>> paths1 = sorted(resnet50.state_dict().keys())
         >>> paths2 = ['prefix.' + k for k in paths1]
         >>> paths2.append('extra_key')
-        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2)
+        >>> sep = '.'
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='embedding')
         >>> mapping = ub.dzip(subpaths1, subpaths2)
-        >>> print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> print('embedding mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='isomorphism')
+        >>> mapping = ub.dzip(subpaths1, subpaths2)
+        >>> print('isomorphism mapping = {}'.format(ub.repr2(mapping, nl=1)))
+
+        if 0:
+            import timerit
+            ti = timerit.Timerit(2, bestof=2, verbose=2)
+            for timer in ti.reset('embedding'):
+                with timer:
+                    maximum_common_ordered_subpaths(paths1, paths2, mode='embedding')
+            for timer in ti.reset('isomorphism'):
+                with timer:
+                    maximum_common_ordered_subpaths(paths1, paths2, mode='isomorphism')
 
     Example:
         >>> rng = None
@@ -721,9 +751,12 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
         >>>     # I think we allow labels to match if they have the same suffix
         >>> ]
         >>> sep = '.'
-        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep)
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='embedding')
         >>> mapping = ub.dzip(subpaths1, subpaths2)
-        >>> print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> print('embedding mapping = {}'.format(ub.repr2(mapping, nl=1)))
+        >>> subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1, paths2, sep, mode='isomorphism')
+        >>> mapping = ub.dzip(subpaths1, subpaths2)
+        >>> print('isomorphism mapping = {}'.format(ub.repr2(mapping, nl=1)))
 
 
     Example:
@@ -760,7 +793,7 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
     # import operator
     # eq = operator.eq
 
-    def paths_to_tree(paths):
+    def paths_to_otree(paths):
         tree = nx.OrderedDiGraph()
         for path in sorted(paths):
             parts = tuple(path.split(sep))
@@ -774,12 +807,12 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
                 tree.add_edge(u, v)
         return tree
 
-    tree1 = paths_to_tree(paths1)
-    tree2 = paths_to_tree(paths2)
+    tree1 = paths_to_otree(paths1)
+    tree2 = paths_to_otree(paths2)
 
     # from netharn.initializers._nx_ext.tree_embedding import forest_str
-    print(len(tree1.nodes))
-    print(len(tree2.nodes))
+    # print(len(tree1.nodes))
+    # print(len(tree2.nodes))
     # print(forest_str(tree1))
     # print(forest_str(tree2))
 
@@ -788,9 +821,18 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.'):
     #     DiGM.is_isomorphic()
     #     list(DiGM.subgraph_isomorphisms_iter())
 
-    from netharn.initializers import _nx_ext
-    subtree1, subtree2 = _nx_ext.maximum_common_ordered_tree_embedding(tree1, tree2, node_affinity=node_affinity)
-    # subtree1, subtree2 = _nx_ext.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
+    if 0:
+        from netharn.initializers import _nx_ext
+        assert mode == 'embedding'
+        subtree1, subtree2 = _nx_ext.maximum_common_ordered_tree_embedding(tree1, tree2, node_affinity=node_affinity)
+    else:
+        from netharn.initializers import _nx_ext_v2
+        if mode == 'embedding':
+            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_embedding(tree1, tree2, node_affinity=node_affinity)
+        elif mode == 'isomorphism':
+            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
+        else:
+            raise KeyError(mode)
 
     subpaths1 = [sep.join(node) for node in subtree1.nodes if subtree1.out_degree[node] == 0]
     subpaths2 = [sep.join(node) for node in subtree2.nodes if subtree2.out_degree[node] == 0]

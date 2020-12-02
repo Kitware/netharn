@@ -4,7 +4,19 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.10 - Unreleased
+## Version 0.5.11 - Unreleased
+
+
+### Added
+* `netharn.cli` subpackage and moved `list_deployed` and `manage_runs` command line tools from dev to there.
+* Latest common subtree embedding isomorphism work while networkx PR is in review
+
+### Fixed
+
+`ChannelSpec.encode` now correctly handles the case where the given input is prefused. 
+
+
+## Version 0.5.10 - Released 2020-10-23
 
 
 ### Added

@@ -1336,9 +1336,11 @@ class ScheduleMixin(object):
             harn._close_prog()
             harn.info('Maximum harn.epoch reached, terminating ...')
             return True
-        if harn.monitor.is_done():
+        done_status = harn.monitor.is_done()
+        if done_status:
             harn._close_prog()
-            harn.info('Validation set is not improving, terminating ...')
+            harn.info(done_status)
+            # harn.info('Validation set is not improving, terminating ...')
             return True
         return False
 
@@ -2251,9 +2253,10 @@ class CoreCallbacks(object):
     code at special places in the training loop. These are usually used for
     logging custom metrics and outputing visualizations.
 
-    Notes:
-        The following note lists the callbacks in roughly the order in which
-        they are called. The tree structure denotes loop nesting.
+    The following note lists the callbacks in roughly the order in which
+    they are called. The tree structure denotes loop nesting.
+
+    .. code::
 
         ├─ after_initialize (no default) - runs after FitHarn is initialized
         │  │
@@ -2279,7 +2282,8 @@ class CoreCallbacks(object):
         │  │         epoch finishes.  Any custom scalar metrics returned in a
         │  │         dictionary will be recorded by the FitHarn loggers.
         │  │
-        │  └─ after_epochs (no default) - runs after the
+        │  └─ after_epochs (no default) - runs after the all data splits are
+        │         finished with  the current epoch.
         │
         └─ on_complete (no default) - runs after the main loop is complete
 
