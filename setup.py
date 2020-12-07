@@ -251,7 +251,7 @@ if __name__ == '__main__':
         },
         packages=find_packages(include='netharn.*'),
         package_data={
-            'netharn.initializers._nx_ext_v2': '*.pyx',
+            'netharn.initializers._nx_ext_v2': ['*.pyx'],
         },
         license='Apache 2',
         classifiers=[
