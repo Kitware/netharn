@@ -804,7 +804,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.5.13', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.5.12', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
