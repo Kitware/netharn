@@ -335,9 +335,7 @@ def load_partial_state(model, model_state_dict, leftover=None,
                     print('CONTRACT')
 
             # pair_freq = ub.dict_hist(ub.flatten([tups1, tups2]))
-            from netharn.initializers._nx_ext.tree_embedding import forest_str
-            from netharn.initializers._nx_ext.path_embedding import paths_to_otree
-            print(forest_str(paths_to_otree(other_keys, '.')))
+            # print(forest_str(paths_to_otree(other_keys, '.')))
 
         # common_keys = other_keys.intersection(self_keys)
         # if not common_keys:
@@ -810,29 +808,19 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
     tree1 = paths_to_otree(paths1)
     tree2 = paths_to_otree(paths2)
 
-    # from netharn.initializers._nx_ext.tree_embedding import forest_str
+    # from netharn.initializers._nx_ext_v2.tree_embedding import forest_str
     # print(len(tree1.nodes))
     # print(len(tree2.nodes))
     # print(forest_str(tree1))
     # print(forest_str(tree2))
 
-    # if 0:
-    #     DiGM = isomorphism.DiGraphMatcher(tree1, tree2)
-    #     DiGM.is_isomorphic()
-    #     list(DiGM.subgraph_isomorphisms_iter())
-
-    if 0:
-        from netharn.initializers import _nx_ext
-        assert mode == 'embedding'
-        subtree1, subtree2 = _nx_ext.maximum_common_ordered_tree_embedding(tree1, tree2, node_affinity=node_affinity)
+    from netharn.initializers import _nx_ext_v2
+    if mode == 'embedding':
+        subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_embedding(tree1, tree2, node_affinity=node_affinity)
+    elif mode == 'isomorphism':
+        subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
     else:
-        from netharn.initializers import _nx_ext_v2
-        if mode == 'embedding':
-            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_embedding(tree1, tree2, node_affinity=node_affinity)
-        elif mode == 'isomorphism':
-            subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
-        else:
-            raise KeyError(mode)
+        raise KeyError(mode)
 
     subpaths1 = [sep.join(node) for node in subtree1.nodes if subtree1.out_degree[node] == 0]
     subpaths2 = [sep.join(node) for node in subtree2.nodes if subtree2.out_degree[node] == 0]

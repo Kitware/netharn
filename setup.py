@@ -250,6 +250,9 @@ if __name__ == '__main__':
             'tests': parse_requirements('requirements/tests.txt'),
         },
         packages=find_packages(include='netharn.*'),
+        package_data={
+            'netharn.initializers._nx_ext_v2': '*.pyx',
+        },
         license='Apache 2',
         classifiers=[
             # List of classifiers available at:
