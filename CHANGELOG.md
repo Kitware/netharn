@@ -4,7 +4,14 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.11 - Unreleased
+## Version 0.5.12 - Unreleased
+
+### Fixed
+
+* Included the `_nx_ext_v2` files in setup.py
+
+
+## Version 0.5.11 - Released 2020-12-02
 
 
 ### Added
