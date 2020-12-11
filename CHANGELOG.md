@@ -6,6 +6,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.13 - Unreleased
 
+### Added
+
+* Add debug info for resource usage
+
 
 ## Version 0.5.12 - Released 2020-12-07
 

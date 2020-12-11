@@ -48,7 +48,7 @@ from .util_json import (LossyJSONEncoder, NumpyEncoder,
                         write_json,)
 from .util_misc import (FlatIndexer, SupressPrint, align, align_lines,
                         strip_ansi,)
-from .util_resources import (ensure_ulimit,)
+from .util_resources import (ensure_ulimit, resource_usage)
 from .util_slider import (SlidingWindow, Stitcher,)
 from .util_slider_dep import (SlidingIndexDataset, SlidingSlices,)
 from .util_subextreme import (argsubmax, argsubmaxima,)

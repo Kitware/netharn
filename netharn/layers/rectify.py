@@ -154,9 +154,22 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
         return cls(**key)
 
 
+class Conv0d(torch.nn.Linear):
+    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True,
+                 padding_mode='zeros'):
+        assert kernel_size == 1, 'Conv0D must have a kernel_size=1'
+        assert padding == 0, 'Conv0D must have padding=1'
+        assert stride == 1, 'Conv0D must have stride=1'
+        assert groups == 1, 'Conv0D must have groups=1'
+        assert dilation == 1, 'Conv0D must have a dilation=1'
+        super().__init__(in_features=in_channels, out_features=out_channels,
+                         bias=bias)
+
+
 def rectify_conv(dim=2):
     conv_cls = {
-        0: torch.nn.Linear,
+        0: Conv0d,
         1: torch.nn.Conv1d,
         2: torch.nn.Conv2d,
         3: torch.nn.Conv3d,

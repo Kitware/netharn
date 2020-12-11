@@ -38,6 +38,7 @@ Note:
 
 CommandLine:
     xdoctest netharn.fit_harn __doc__:0
+    xdoctest netharn.fit_harn __doc__:0 --debug
     xdoctest netharn.fit_harn __doc__:0 --profile --xpu=cpu
 
 Example:
@@ -533,7 +534,8 @@ class InitializeMixin(object):
             stdout_handler = logging.StreamHandler(sys.stdout)
             stdout_handler.setFormatter(s_formatter)
 
-            if harn.preferences['verbose'] > 1 or ub.argflag('--verbose'):
+            if (harn.preferences['verbose'] > 1 or
+                  ub.argflag(('--verbose', '--debug'))):
                 stdout_handler.setLevel(logging.DEBUG)
             else:
                 stdout_handler.setLevel(logging.INFO)
@@ -1846,7 +1848,10 @@ class CoreMixin(object):
     def _run_epoch(harn, loader, tag, learn=False, max_iter=np.inf,
                    call_on_epoch=True):
         """
-        evaluate the model on test / train / or validation data
+        Run a single epoch of test / train / or validation
+
+        Notes:
+            THE CRITICAL LOOP LIVES HERE
 
         Args:
             loader (torch.utils.data.DataLoader):
@@ -1915,6 +1920,9 @@ class CoreMixin(object):
         use_tqdm = harn.preferences['prog_backend'] == 'tqdm'
         timeout = harn.preferences['timeout']
         _timer = harn._timer
+
+        if harn.preferences['log_resources']:
+            harn.debug(ub.repr2(util.resource_usage(), nl=1))
 
         if isinstance(prog, ub.ProgIter):
             prog.begin()
@@ -2028,6 +2036,14 @@ class CoreMixin(object):
                             iter_idx = harn.iter_index
                             for key, value in ave_metrics.items():
                                 harn.log_value(tag + ' iter ' + key, value, iter_idx)
+
+                            if harn.preferences['log_resources']:
+                                usage = util.resource_usage()
+                                key = 'mem'
+                                value = usage['mem_percent']
+                                harn.log_value(tag + ' iter ' + key, value, iter_idx)
+                                harn.debug(ub.repr2(usage, nl=1))
+
                             if harn._tlog is not None:
                                 if harn.preferences['eager_dump_tensorboard']:
                                     # Dump tensorboard metrics to png / pickle.
@@ -2079,6 +2095,9 @@ class CoreMixin(object):
         #            for name, param in harn.model.named_parameters()):
         #         harn.optimizer.step()
         #         harn.optimizer.zero_grad()
+
+        if harn.preferences['log_resources']:
+            harn.debug(ub.repr2(util.resource_usage(), nl=1))
 
         prog.refresh()
         if not use_tqdm:
@@ -2904,6 +2923,10 @@ class FitHarnPreferences(scfg.Config):
         'allow_unicode': scfg.Value(True, help=(
             'allow for unicode characters in messages, otherwise '
             ' we approximate them with ascii')),
+
+        'log_resources': scfg.Value(True, help=(
+            'Track system resource usage like RAM and disk space')
+        ),
     }
 
 
