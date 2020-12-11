@@ -2100,7 +2100,7 @@ class CoreMixin(object):
             usage = util.resource_usage()
             key = 'mem'
             value = usage['mem_percent']
-            harn.log_value(tag + ' epoch ' + key, value, iter_idx)
+            harn.log_value(tag + ' epoch ' + key, value, harn.epoch)
             harn.debug(ub.repr2(usage, nl=1))
 
         prog.refresh()
