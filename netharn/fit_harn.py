@@ -2097,7 +2097,11 @@ class CoreMixin(object):
         #         harn.optimizer.zero_grad()
 
         if harn.preferences['log_resources']:
-            harn.debug(ub.repr2(util.resource_usage(), nl=1))
+            usage = util.resource_usage()
+            key = 'mem'
+            value = usage['mem_percent']
+            harn.log_value(tag + ' epoch ' + key, value, iter_idx)
+            harn.debug(ub.repr2(usage, nl=1))
 
         prog.refresh()
         if not use_tqdm:

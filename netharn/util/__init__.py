@@ -167,7 +167,7 @@ __all__ = ['ArrayAPI', 'BASE_COLORS', 'BatchNormContext', 'Boxes',
            'subpixel_translate', 'torch_ravel_multi_index', 'trainable_layers',
            'uniform', 'uniform32', 'util_dataframe', 'walk_json',
            'warp_points', 'warp_tensor', 'wide_strides_1d', 'write_arr',
-           'write_h5arr', 'write_json', 'zopen']
+           'write_h5arr', 'write_json', 'zopen', 'resource_usage']
 # </AUTOGEN_INIT>
 
 
