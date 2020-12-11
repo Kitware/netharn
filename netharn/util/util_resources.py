@@ -32,6 +32,7 @@ def resource_usage(workdir='.', disk=True, ram=True, rlimit=True, rusage=False):
     Example:
         >>> from netharn.util.util_resources import *  # NOQA
         >>> info = resource_usage()
+        >>> import ubelt as ub
         >>> print('info = {}'.format(ub.repr2(info, nl=2, precision=2)))
 
     Profiling:
