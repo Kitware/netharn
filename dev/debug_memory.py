@@ -4,6 +4,10 @@ Experiment Script Related to Pytorch Memory Leak Issue
 References:
     https://github.com/pytorch/pytorch/issues/13246
     https://gist.github.com/mprostock/2850f3cd465155689052f0fa3a177a50
+
+Potential Solutions:
+    https://stackoverflow.com/questions/6832554/multiprocessing-how-do-i-share-a-dict-among-multiple-processes
+
 """
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
@@ -13,7 +17,7 @@ import ubelt as ub
 import sys
 
 
-class DataIter(Dataset):
+class CustomDataset(Dataset):
     def __init__(self, storage_mode='numpy', return_mode='tensor', total=24e7):
         self.return_mode = return_mode
         self.storage_mode = storage_mode
@@ -27,7 +31,34 @@ class DataIter(Dataset):
         elif storage_mode == 'ndsampler':
             import ndsampler
             assert total <= 1000
-            self.data = ndsampler.CocoSampler.demo('shapes{}'.format(total))
+            sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
+
+            TRY_TWEAKS = 1
+
+            if 1 and TRY_TWEAKS:
+                # Tweaks to try and prevent the sampler from leaking
+                sampler.frames._lru = None
+
+            if 1 and TRY_TWEAKS:
+                import multiprocessing
+                dset = sampler.dset
+                manager = multiprocessing.Manager()
+                dset.index.cats = manager.dict(dset.index.cats)
+                dset.index.anns = manager.dict(dset.index.anns)
+                dset.index.imgs = manager.dict(dset.index.imgs)
+                dset.index.gid_to_aids = manager.dict(dset.index.gid_to_aids)
+                dset.index.cid_to_aids = manager.dict(dset.index.cid_to_aids)
+                dset.index.vidid_to_gids = manager.dict(dset.index.vidid_to_gids)
+                dset.index.file_name_to_img = manager.dict(dset.index.file_name_to_img)
+                dset.index.name_to_cat = manager.dict(dset.index.name_to_cat)
+
+                dset.dataset = manager.dict(dset.dataset)
+
+                # sampler.frames.dset
+                # sampler.dset
+                # sampler.regions.dset
+
+            self.data = sampler
         else:
             raise KeyError(storage_mode)
 
@@ -149,7 +180,7 @@ def byte_str(num, unit='auto', precision=2):
     return ub.repr2(num_unit, precision=precision) + ' ' + unit
 
 
-def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True):
+def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, workers=2):
     """
     Args:
         storage_mode : how the dataset is stored in backend datasets
@@ -164,11 +195,10 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True):
     mem_str = byte_str(start_mem)
     print('Starting used system memory = {!r}'.format(mem_str))
 
-    train_data = DataIter(
+    train_data = CustomDataset(
         storage_mode=storage_mode,
         return_mode=return_mode,
         total=total)
-    # self = train_data
 
     if storage_mode == 'numpy':
         total_storate_bytes = train_data.data.dtype.itemsize * train_data.data.size
@@ -179,11 +209,11 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True):
 
     mem = psutil.virtual_memory()
     mem_str = byte_str(mem.used - start_mem)
-    print('After init DataIter   memory = {!r}'.format(mem_str))
+    print('After init CustomDataset   memory = {!r}'.format(mem_str))
 
     print('shuffle = {!r}'.format(shuffle))
 
-    num_workers = 2
+    num_workers = workers
     train_loader = DataLoader(train_data, batch_size=300,
                               shuffle=shuffle,
                               drop_last=True,
@@ -222,6 +252,14 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True):
     print('measured final usage: {}'.format(byte_str(used_bytes)))
     print('measured peak usage:  {}'.format(byte_str(max_bytes)))
 
+    if hasattr(train_data.data, 'frames'):
+        sampler = train_data.data
+        print('sampler.regions.__dict__ = {}'.format(
+            ub.repr2(sampler.regions.__dict__, nl=1)))
+
+        print('sampler.frames.__dict__ = {}'.format(
+            ub.repr2(sampler.frames.__dict__, nl=1)))
+
 
 if __name__ == '__main__':
     """
@@ -236,6 +274,11 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=4
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=4
 
         python debug_memory.py numpy dict 24e5
         python debug_memory.py python list 24e7
@@ -257,3 +300,26 @@ incremented (i.e. be written to).
 pages are typically 4096 bytes.
 
 """
+
+
+def test_manager():
+    """
+    Look at how managers works
+    """
+    from multiprocessing import Manager
+
+    import kwcoco
+    dset = kwcoco.CocoDataset.coerce('shapes32')
+
+    manager = Manager()
+    managed_imgs = manager.dict(dset.imgs)
+
+    import timerit
+    ti = timerit.Timerit(100, bestof=10, verbose=2)
+    for timer in ti.reset('time'):
+        with timer:
+            managed_imgs.keys()
+
+    for timer in ti.reset('time'):
+        with timer:
+            dset.imgs.keys()
