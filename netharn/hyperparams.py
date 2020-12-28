@@ -516,14 +516,16 @@ class HyperParams(object):
         return hyper.name
 
     def make_model(hyper):
-        """ Instanciate the model defined by the hyperparams """
+        """ Instantiate the model defined by the hyperparams """
         if hyper._model_info['instance'] is not None:
             return hyper._model_info['instance']
         model = hyper.model_cls(**hyper.model_params)
         return model
 
     def make_optimizer(hyper, parameters):
-        """ Instanciate the optimizer defined by the hyperparams """
+        """
+        Instantiate the optimizer defined by the hyperparams
+        """
         if hyper._optimizer_info['instance'] is not None:
             return hyper._optimizer_info['instance']
         # What happens if we want to group parameters
@@ -531,7 +533,7 @@ class HyperParams(object):
         return optimizer
 
     def make_scheduler(hyper, optimizer):
-        """ Instanciate the lr scheduler defined by the hyperparams """
+        """ Instantiate the lr scheduler defined by the hyperparams """
         if hyper._scheduler_info['instance'] is not None:
             return hyper._scheduler_info['instance']
         if hyper.scheduler_cls is None:
@@ -542,14 +544,14 @@ class HyperParams(object):
         return scheduler
 
     def make_initializer(hyper):
-        """ Instanciate the initializer defined by the hyperparams """
+        """ Instantiate the initializer defined by the hyperparams """
         if hyper._initializer_info['instance'] is not None:
             return hyper._initializer_info['instance']
         initializer = hyper.initializer_cls(**hyper.initializer_params)
         return initializer
 
     def make_criterion(hyper):
-        """ Instanciate the criterion defined by the hyperparams """
+        """ Instantiate the criterion defined by the hyperparams """
         if hyper._criterion_info['instance'] is not None:
             return hyper._criterion_info['instance']
         if hyper.criterion_cls is None:
@@ -568,12 +570,12 @@ class HyperParams(object):
         return loaders
 
     def make_xpu(hyper):
-        """ Instanciate the criterion defined by the hyperparams """
+        """ Instantiate the criterion defined by the hyperparams """
         xpu = device.XPU.coerce(hyper.xpu)
         return xpu
 
     def make_monitor(hyper):
-        """ Instanciate the monitor defined by the hyperparams """
+        """ Instantiate the monitor defined by the hyperparams """
         if hyper._monitor_info['instance'] is not None:
             return hyper._monitor_info['instance']
         if hyper.monitor_cls is None:
