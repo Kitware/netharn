@@ -59,17 +59,9 @@ class ConvNormNd(common.Sequential):
         super(ConvNormNd, self).__init__()
 
         conv_cls = rectify.rectify_conv(dim)
-        if dim == 0:
-            assert kernel_size == 1
-            assert padding == 0
-            assert stride == 1
-            assert groups == 1
-            assert dilation == 1
-            conv = conv_cls(in_channels, out_channels, bias=bias,)
-        else:
-            conv = conv_cls(in_channels, out_channels, kernel_size=kernel_size,
-                            padding=padding, stride=stride, groups=groups,
-                            bias=bias, dilation=dilation)
+        conv = conv_cls(in_channels, out_channels, kernel_size=kernel_size,
+                        padding=padding, stride=stride, groups=groups,
+                        bias=bias, dilation=dilation)
 
         norm = rectify.rectify_normalizer(out_channels, norm, dim=dim)
         noli = rectify.rectify_nonlinearity(noli, dim=dim)

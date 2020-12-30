@@ -385,8 +385,54 @@ class Optimizer(object):
             momentum:
                 a float, only used if the optimizer accepts it
 
+            params:
+                This is a SPECIAL keyword that is handled differently.  It is
+                interpreted by `netharn.hyper.Hyperparams.make_optimizer`.
+
+                In this simplest case you can pass "params" as a list of torch
+                parameter objects or a list of dictionaries containing param
+                groups and special group options (just as you would when
+                constructing an optimizer from scratch). We don't recommend
+                this while using netharn unless you know what you are doing
+                (Note, that params will correctly change device if the model is
+                mounted).
+
+                In the case where you do not want to group parameters with
+                different options, it is best practice to simply not specify
+                params.
+
+                In the case where you want to group parameters set params to
+                either a List[Dict] or a Dict[str, Dict].
+
+                The items / values of this collection should be a dictionary.
+                The keys / values of this dictionary should be the per-group
+                optimizer options. Additionally, there should be a key "params"
+                (note this is a nested per-group params not to be confused with
+                the top-level "params").
+
+                Each per-group "params" should be either (1) a list of
+                parameter names (preferred), (2) a string that specifies a
+                regular expression (matching layer names will be included in
+                this group), or (3) a list of parameter objects.
+
+                For example, the top-level params might look like:
+
+                    params={
+                        'head': {'lr': 0.003, 'params': '.*head.*'},
+                        'backbone': {'lr': 0.001, 'params': '.*backbone.*'},
+                        'preproc': {'lr': 0.0, 'params': [
+                            'model.conv1', 'model.norm1', , 'model.relu1']}
+                    }
+
+                Note that head and backbone specify membership via regular
+                expression whereas preproc explicitly specifies a list of
+                parameter names.
+
         Notes:
             pip install torch-optimizer
+
+        Returns:
+            Tuple[type, dict]: a type and arguments to construct it
 
         References:
             https://datascience.stackexchange.com/questions/26792/difference-between-rmsprop-with-momentum-and-adam-optimizers
@@ -396,14 +442,19 @@ class Optimizer(object):
             xdoctest -m /home/joncrall/code/netharn/netharn/api.py Optimizer.coerce
 
         Example:
-            >>> config = {'optimizer': 'sgd'}
+            >>> config = {'optimizer': 'sgd', 'params': [
+            >>>     {'lr': 3e-3, 'params': '.*head.*'},
+            >>>     {'lr': 1e-3, 'params': '.*backbone.*'},
+            >>> ]}
             >>> optim_ = Optimizer.coerce(config)
 
             >>> # xdoctest: +REQUIRES(module:torch_optimizer)
             >>> from netharn.api import *  # NOQA
             >>> config = {'optimizer': 'DiffGrad'}
-            >>> optim_ = Optimizer.coerce(config)
+            >>> optim_ = Optimizer.coerce(config, lr=1e-5)
             >>> print('optim_ = {!r}'.format(optim_))
+            >>> assert optim_[1]['lr'] == 1e-5
+
             >>> config = {'optimizer': 'Yogi'}
             >>> optim_ = Optimizer.coerce(config)
             >>> print('optim_ = {!r}'.format(optim_))
@@ -413,51 +464,52 @@ class Optimizer(object):
 
         TODO:
             - [ ] https://pytorch.org/blog/stochastic-weight-averaging-in-pytorch/
-
-
         """
         import netharn as nh
-        _update_defaults(config, kw)
+        config = _update_defaults(config, kw)
         key = config.get('optimizer', config.get('optim', 'sgd')).lower()
         lr = config.get('learning_rate', config.get('lr', 3e-3))
         decay = config.get('weight_decay', config.get('decay', 0))
         momentum = config.get('momentum', 0.9)
+        params = config.get('params', None)
         # TODO: allow for "discriminative fine-tuning"
         if key == 'sgd':
-            optim_ = (torch.optim.SGD, {
+            cls = torch.optim.SGD
+            kw = {
                 'lr': lr,
                 'weight_decay': decay,
                 'momentum': momentum,
                 'nesterov': True,
-            })
+            }
         elif key == 'adam':
-            optim_ = (torch.optim.Adam, {
+            cls = torch.optim.Adam
+            kw = {
                 'lr': lr,
                 'weight_decay': decay,
                 # 'betas': (0.9, 0.999),
                 # 'eps': 1e-8,
                 # 'amsgrad': False
-            })
+            }
         elif key == 'adamw':
             if _TORCH_IS_GE_1_2_0:
                 from torch.optim import AdamW
-                optim_ = (AdamW, {
-                    'lr': lr,
-                    # 'betas': (0.9, 0.999),
-                    # 'eps': 1e-8,
-                    # 'amsgrad': False
-                })
+                cls = AdamW
             else:
-                optim_ = (nh.optimizers.AdamW, {
-                    'lr': lr,
-                })
+                cls = nh.optimizers.AdamW
+            kw = {
+                'lr': lr,
+                # 'betas': (0.9, 0.999),
+                # 'eps': 1e-8,
+                # 'amsgrad': False
+            }
         elif key == 'rmsprop':
-            optim_ = (torch.optim.RMSprop, {
+            cls = torch.optim.RMSprop
+            kw = {
                 'lr': lr,
                 'weight_decay': decay,
                 'momentum': momentum,
                 'alpha': 0.9,
-            })
+            }
         else:
             from netharn.util import util_inspect
             _lut = {}
@@ -489,13 +541,14 @@ class Optimizer(object):
                 if cls is not None:
                     defaultkw = util_inspect.default_kwargs(cls)
                     kw = defaultkw.copy()
-                    kw.update()
-                    optim_ = (cls, kw)
+                    kw.update(ub.dict_isect(config, kw))
                     break
 
-            if cls is None:
-                raise KeyError(key)
+        if cls is None:
+            raise KeyError(key)
 
+        kw['params'] = params
+        optim_ = (cls, kw)
         return optim_
 
 

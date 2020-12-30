@@ -4,7 +4,7 @@ from netharn.layers import conv_norm
 import numpy as np
 
 
-class MultiLayerPerceptronNd(common.Module):
+class MultiLayerPerceptronNd(common.AnalyticModule):
     """
     A multi-layer perceptron network for n dimensional data
 
@@ -14,21 +14,54 @@ class MultiLayerPerceptronNd(common.Module):
 
     Args:
         dim (int): specify if the data is 0, 1, 2, 3, or 4 dimensional.
-        in_channels (int):
+
+        in_channels (int): number of input channels
+
         hidden_channels (List[int]): or an int specifying the number of hidden
             layers (we choose the channel size to linearly interpolate between
             input and output channels)
-        out_channels (int):
-        dropout (float, default=0): amount of dropout to use
+
+        out_channels (int): number of output channels
+
+        dropout (float, default=None): amount of dropout to use between 0 and 1
+
         norm (str, default='batch'): type of normalization layer
             (e.g. batch or group), set to None for no normalization.
+
         noli (str, default='relu'): type of nonlinearity
+
         residual (bool, default=False):
             if true includes a resitual skip connection between inputs and
             outputs.
 
+        norm_output (bool, default=True):
+            if True, applies a final normalization layer to the output.
+
+        noli_output (bool, default=True):
+            if True, applies a final nonlineary to the output.
+
+
     CommandLine:
-        xdoctest -m ~/code/netharn/netharn/layers/perceptron.py MultiLayerPerceptronNd:0
+        xdoctest -m netharn.layers.perceptron MultiLayerPerceptronNd:0
+
+    Example:
+        >>> from netharn.layers.perceptron import *
+        >>> kw = {'dim': 0, 'in_channels': 2, 'out_channels': 1}
+        >>> model0 = MultiLayerPerceptronNd(hidden_channels=0, **kw)
+        >>> model1 = MultiLayerPerceptronNd(hidden_channels=1, **kw)
+        >>> model2 = MultiLayerPerceptronNd(hidden_channels=2, **kw)
+        >>> print('model0 = {!r}'.format(model0))
+        >>> print('model1 = {!r}'.format(model1))
+        >>> print('model2 = {!r}'.format(model2))
+
+        >>> from netharn.layers.perceptron import *
+        >>> kw = {'dim': 0, 'in_channels': 2, 'out_channels': 1, 'residual': True}
+        >>> model0 = MultiLayerPerceptronNd(hidden_channels=0, **kw)
+        >>> model1 = MultiLayerPerceptronNd(hidden_channels=1, **kw)
+        >>> model2 = MultiLayerPerceptronNd(hidden_channels=2, **kw)
+        >>> print('model0 = {!r}'.format(model0))
+        >>> print('model1 = {!r}'.format(model1))
+        >>> print('model2 = {!r}'.format(model2))
 
     Example:
         >>> from netharn.layers.perceptron import *
@@ -73,8 +106,8 @@ class MultiLayerPerceptronNd(common.Module):
         >>> print(ub.repr2(self.output_shape_for(input_shape).hidden, nl=-1))
     """
     def __init__(self, dim, in_channels, hidden_channels, out_channels,
-                 bias=True, dropout=0, noli='relu', norm='batch',
-                 residual=False):
+                 bias=True, dropout=None, noli='relu', norm='batch',
+                 residual=False, noli_output=False, norm_output=False):
 
         super(MultiLayerPerceptronNd, self).__init__()
         dropout_cls = rectify.rectify_dropout(dim)
@@ -91,42 +124,115 @@ class MultiLayerPerceptronNd(common.Module):
         hidden = self.hidden = common.Sequential()
         for i, curr_out in enumerate(hidden_channels):
             layer = conv_norm.ConvNormNd(dim, curr_in, curr_out, kernel_size=1,
-                                         bias=False, noli=noli, norm=norm)
+                                         bias=bias, noli=noli, norm=norm)
             hidden.add_module('hidden{}'.format(i), layer)
-            hidden.add_module('dropout{}'.format(i), dropout_cls(p=dropout))
+            if dropout is not None:
+                hidden.add_module('dropout{}'.format(i), dropout_cls(p=dropout))
             curr_in = curr_out
 
-        outkw = {'bias': bias}
-        if dim > 0:
-            outkw['kernel_size'] = 1
-        self.hidden.add_module('output', conv_cls(curr_in, out_channels, **outkw))
+        outkw = {'bias': bias, 'kernel_size': 1}
+        self.hidden.add_module(
+            'output', conv_cls(curr_in, out_channels, **outkw))
 
         if residual:
-            self.skip = conv_cls(in_channels, out_channels, **outkw)
+            if in_channels == out_channels:
+                self.skip = common.Identity()
+            else:
+                self.skip = conv_cls(in_channels, out_channels, **outkw)
         else:
             self.skip = None
 
+        if norm_output:
+            self.final_norm = rectify.rectify_normalizer(out_channels, norm, dim=dim)
+        else:
+            self.final_norm = None
+
+        if noli_output:
+            self.final_noli = rectify.rectify_nonlinearity(noli, dim=dim)
+        else:
+            self.final_noli = None
+
+        self.norm_output = norm_output
+        self.noli_output = noli_output
         self.in_channels = in_channels
         self.out_channels = out_channels
 
     def forward(self, inputs):
         outputs = self.hidden(inputs)
-        if self.skip:
-            outputs = self.skip(inputs) + outputs
+
+        if self.skip is not None:
+            projected = self.skip(inputs)
+            outputs = projected + outputs
+
+        if self.final_norm is not None:
+            outputs = self.final_norm(outputs)
+
+        if self.final_noli is not None:
+            outputs = self.final_noli(outputs)
+
         return outputs
 
-    def output_shape_for(self, input_shape):
-        outputs = self.hidden.output_shape_for(input_shape)
-        if self.skip:
-            import netharn as nh
-            skip = nh.OutputShapeFor(self.skip)(input_shape)
-            outputs.hidden['skip'] = skip
-        return outputs
+    def _analytic_forward(self, inputs, _OutputFor, _Output, _Hidden,
+                          **kwargs):
+        """
+        Alternative implementation of forward using analytic functions
+        for fast computation of ouptut shape / receptive field.
 
-    def receptive_field_for(self, input_field=None):
-        import netharn as nh
-        field = nh.ReceptiveFieldFor(self.hidden)(input_field)
-        if self.skip:
-            skip = nh.ReceptiveFieldFor(self.skip)(field)
-            field.hidden['skip'] = skip
-        return field
+        The actual forward pass is written explictly above, but this should
+        follow the same structure.
+
+        Example:
+            >>> from netharn.layers.perceptron import *  # NOQA
+            >>> self = MultiLayerPerceptronNd(
+            >>>     1, 128, 3, 2, residual=True, noli_output=True, norm_output=True)
+            >>> print('self = {!r}'.format(self))
+            >>> output_shape = self.output_shape_for( (1, 128, 10))
+            >>> print('output_shape = {}'.format(output_shape))
+            >>> print('{}'.format(ub.repr2(output_shape.hidden.shallow(4), nl=-1)))
+
+            >>> receptive_field = self.receptive_field_for()
+            >>> print('receptive_field = {}'.format(ub.repr2(receptive_field, nl=1)))
+            >>> print('{}'.format(ub.repr2(receptive_field.hidden.shallow(2), nl=3)))
+
+        Ignore:
+            >>> from netharn.layers.perceptron import *  # NOQA
+            >>> self = MultiLayerPerceptronNd(
+            >>>     1, 128, 3, 2, residual=True, noli_output=True)
+            >>> globals().update(self._analytic_shape_kw())
+            >>> inputs = (1, 128, 10)
+        """
+        hidden = _Hidden()
+
+        outputs = hidden['hidden'] = _OutputFor(self.hidden)(inputs)
+        if self.skip is not None:
+            projected = hidden['skip'] = _OutputFor(self.skip)(outputs)
+            outputs = _OutputFor.add(outputs, projected)
+
+        if self.final_norm is not None:
+            outputs = hidden['final_norm'] = _OutputFor(self.final_norm)(outputs)
+
+        if self.final_noli is not None:
+            outputs = hidden['final_noli'] = _OutputFor(self.final_noli)(outputs)
+
+        out = _Output.coerce(outputs, hidden)
+        return out
+
+
+# TODO:
+# class PerceptronChainNd(common.AnalyticModule):
+#     def __init__(self):
+#         num_layers = 4
+#         in_channels = 2
+#         out_channels = 2
+#         curr_in = in_channels
+#         transition_channels = 128
+#         dim = 2
+#         layers = []
+#         for layer_idx in range(num_layers):
+#             layer = MultiLayerPerceptronNd(
+#                 dim=dim,
+#                 in_channels=curr_in,
+#                 hidden_channels=[32],
+#                 out_channels=transition_channels, residual=True)
+#             curr_in = layer.out_channels
+#             layers.append(layer)

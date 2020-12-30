@@ -86,6 +86,21 @@ class AnalyticModule(Module):
         """
         Defines a symbolic representation of forward, output shape, and receptive field.
 
+        Notes:
+            The basic formula for implementing this function is
+            x = inputs
+
+            # Create a hidden object to store intermediate computations
+            hidden = _Hidden()
+
+            # Wrap any torch module callable with _OutputFor
+            x = hidden['mylayer1'] = _OutputFor(self.mylayer1)(x)
+            x = hidden['mylayer2'] = _OutputFor(self.mylayer2)(x)
+
+            # Create an output object with the output data and hidden info
+            out = _Output.coerce(x, hidden)
+            return out
+
         Example:
             >>> import netharn as nh
             >>> globals().update(nh.layers.AnalyticModule._analytic_shape_kw())

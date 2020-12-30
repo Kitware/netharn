@@ -148,6 +148,7 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
         kw.update(kwargs)
         return cls(**kw)
     except Exception:
+        raise
         # Ignore kwargs
         import warnings
         warnings.warn('kwargs ignored in rectify normalizer')

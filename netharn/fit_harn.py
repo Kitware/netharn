@@ -639,7 +639,7 @@ class InitializeMixin(object):
         # https://towardsdatascience.com/understanding-learning-rates-and-how-it-improves-performance-in-deep-learning-d0d4059c1c10
         # https://arxiv.org/pdf/1801.06146.pdf
         # https://discuss.pytorch.org/t/implementing-differential-learning-rate-by-parameter-groups/32903
-        harn.optimizer = harn.hyper.make_optimizer(harn.model.parameters())
+        harn.optimizer = harn.hyper.make_optimizer(harn.model.named_parameters())
 
         harn.debug('Make scheduler')
         # Note: this will usually overwrite any default LR in the optimizer

@@ -522,14 +522,102 @@ class HyperParams(object):
         model = hyper.model_cls(**hyper.model_params)
         return model
 
-    def make_optimizer(hyper, parameters):
+    def make_optimizer(hyper, named_parameters):
         """
         Instantiate the optimizer defined by the hyperparams
+
+        Contains special logic to create param groups
+
+        Example:
+            >>> import netharn as nh
+            >>> config = {'optimizer': 'sgd', 'params': [
+            >>>     {'lr': 3e-3, 'params': '.*\\.bias'},
+            >>>     {'lr': 1e-3, 'params': '.*\\.weight'},
+            >>>     #{'lr': 100, 'params': '.*\\.doesnotmatch'},
+            >>> ]}
+            >>> optim_ = nh.api.Optimizer.coerce(config)
+            >>> hyper = nh.HyperParams(optimizer=optim_)
+            >>> model = nh.models.ToyNet1d()
+            >>> named_parameters = list(model.named_parameters())
+            >>> optimizer = hyper.make_optimizer(named_parameters)
+            >>> print('optimizer = {!r}'.format(optimizer))
         """
         if hyper._optimizer_info['instance'] is not None:
             return hyper._optimizer_info['instance']
         # What happens if we want to group parameters
-        optimizer = hyper.optimizer_cls(parameters, **hyper.optimizer_params)
+        optim_kw = hyper.optimizer_params.copy()
+        params = optim_kw.pop('params', None)
+        if params is None:
+            param_groups = [p for (name, p) in named_parameters]
+        else:
+            import re
+            named_parameters = list(named_parameters)
+            name_to_param = dict(named_parameters)
+            param_groups = []
+            if isinstance(params, dict):
+                # remember the group key
+                groups = [{'key': k, **g} for k, g in params.items()]
+            if isinstance(params, list):
+                groups = params
+
+            PREVENT_DUPLICATES = 1
+
+            seen_ = set()
+            for group in groups:
+                # Transform param grouping specifications into real params
+                group = group.copy()
+                spec = group.pop('params')
+                if isinstance(spec, list):
+                    if len(spec):
+                        first = ub.peek(spec)
+                        if isinstance(first, str):
+                            real_params = [name_to_param[k] for k in spec]
+                        elif isinstance(first, torch.nn.Parameter):
+                            real_params = spec
+                        else:
+                            raise TypeError(type(first))
+                    else:
+                        real_params = []
+                elif isinstance(spec, str) or isinstance(spec, re.Pattern):
+                    if isinstance(spec, re.Pattern):
+                        pat = spec
+                    else:
+                        pat = re.compile(spec)
+                    real_params = [p for name, p in name_to_param.items()
+                                   if pat.match(name)]
+                else:
+                    raise TypeError(type(spec))
+
+                if PREVENT_DUPLICATES:
+                    # give priority to earlier params
+                    # This is Python 3.6+ only
+                    real_params = list(ub.oset(real_params) - seen_)
+                    seen_.update(real_params)
+
+                group['params'] = real_params
+                param_groups.append(group)
+
+            CHECK = 1
+            if CHECK:
+                # Determine if we are using the same param more than once
+                # or if we are not using a param at all.
+                # NOTE: torch does do a duplicate check.
+                param_group_ids = []
+                for group in param_groups:
+                    ids = list(map(id, group['params']))
+                    param_group_ids.append(ids)
+
+                all_param_ids = [id(p) for n, p in named_parameters]
+                flat_ids = list(ub.flatten(param_group_ids))
+                freq = ub.dict_hist(flat_ids, labels=all_param_ids)
+                num_unused = any(v == 0 for v in freq.values())
+                num_dups = any(v > 1 for v in freq.values())
+                if num_unused:
+                    warnings.warn('There are {} unused params'.format(num_unused))
+                if num_dups:
+                    warnings.warn('There are {} duplicate params'.format(num_dups))
+
+        optimizer = hyper.optimizer_cls(param_groups, **optim_kw)
         return optimizer
 
     def make_scheduler(hyper, optimizer):
