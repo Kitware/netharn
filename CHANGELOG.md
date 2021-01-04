@@ -8,7 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-* Add debug info for resource usage
+* Add 
+
+* Add preference `"log_resources"` to debug RAM and resource usage
+
+* Add preference `"dump_tensorboard"` to completely disable tensorboard
 
 
 ### Fixed
@@ -16,10 +20,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 * `nh.api.Optimizer.coerce` now correctly respects lr and other params for
   torch-optimizer optimizers.
 
-* MultiLayerPerceptronNd has several changes / fixes
+* `MultiLayerPerceptronNd` has several changes / fixes
     - (BREAKING) always set `bias=False` in the hidden layers, this is now fixed. 
     - dropout no longer is added if set to None
-    - option to apply a nonlineary / normalization to the output layer
+    - option to apply a non-linearity / normalization to the output layer
     - `output_shape_for` and `receptive_field_for` are now implemented via `_analytic_forward`
 
 
