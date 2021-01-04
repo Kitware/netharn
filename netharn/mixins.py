@@ -19,7 +19,16 @@ def _dump_monitor_tensorboard(harn, mode='epoch', special_groupers=['loss'],
     Also dumps pickles to disk containing the same information.
 
     Args:
-        mode : can be either epoch or iter
+        mode (str | Tuple[str], default='epoch'):
+            Can be either `epoch` or `iter`, or a tuple containing both.
+
+        special_groupers (List[str], default=['loss']):
+            list of strings indicating groups.  For each item, a logged value
+            is contained in that group if it contains that item as a substring.
+
+        serial (bool, default=False):
+            If True executes the drawing process in the main process, otherwise
+            it forks a new process and runs in the background.
 
     CommandLine:
         xdoctest -m netharn.mixins _dump_monitor_tensorboard --profile

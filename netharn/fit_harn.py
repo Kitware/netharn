@@ -1807,7 +1807,7 @@ class CoreMixin(object):
 
         terminate_flag = harn._check_termination()
 
-        if harn._tlog is not None:
+        if harn._tlog is not None and harn.preferences['dump_tensorboard']:
             if not harn.preferences['eager_dump_tensorboard']:
                 # If we did not dump iteration metrics in the inner loop then
                 # do it here.
@@ -2045,7 +2045,7 @@ class CoreMixin(object):
                                 harn.debug(ub.repr2(usage, nl=1))
 
                             if harn._tlog is not None:
-                                if harn.preferences['eager_dump_tensorboard']:
+                                if (harn.preferences['dump_tensorboard'] and harn.preferences['eager_dump_tensorboard']):
                                     # Dump tensorboard metrics to png / pickle.
                                     from netharn.mixins import _dump_monitor_tensorboard
                                     _dump_monitor_tensorboard(
@@ -2869,7 +2869,12 @@ class FitHarnPreferences(scfg.Config):
 
         'eager_dump_tensorboard': scfg.Value(True, help=(
             'If True, logs tensorboard within inner iteration '
-            '(experimental)')
+            '(experimental). No effect if dump_tensorboard is True')
+        ),
+
+        'dump_tensorboard': scfg.Value(True, help=(
+            'If True, tensorboard information is visualized with '
+            'matplotlib and dumped as an image',
         ),
 
         'tensorboard_groups': scfg.Value(['loss'], help=(
@@ -2916,6 +2921,10 @@ class FitHarnPreferences(scfg.Config):
             'verbosity level, '
             'if >1 shows debug info in stdout')),
 
+        'log_resources': scfg.Value(True, help=(
+            'Track system resource usage like RAM and disk space')
+        ),
+
         # Deprecated
         'use_tqdm': scfg.Value(None, help='deprecated'),
 
@@ -2927,10 +2936,6 @@ class FitHarnPreferences(scfg.Config):
         'allow_unicode': scfg.Value(True, help=(
             'allow for unicode characters in messages, otherwise '
             ' we approximate them with ascii')),
-
-        'log_resources': scfg.Value(True, help=(
-            'Track system resource usage like RAM and disk space')
-        ),
     }
 
 
