@@ -40,6 +40,8 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
         noli_output (bool, default=True):
             if True, applies a final nonlineary to the output.
 
+        standardize_weights (bool, default=False):
+            Use weight standardization
 
     CommandLine:
         xdoctest -m netharn.layers.perceptron MultiLayerPerceptronNd:0
