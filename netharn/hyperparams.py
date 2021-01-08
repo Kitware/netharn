@@ -50,7 +50,7 @@ import platform
 import warnings
 from os.path import join
 from os.path import normpath
-from os.path import sys
+import sys
 import numpy as np
 import ubelt as ub
 import torch
@@ -579,8 +579,10 @@ class HyperParams(object):
                             raise TypeError(type(first))
                     else:
                         real_params = []
-                elif isinstance(spec, str) or isinstance(spec, re.Pattern):
-                    if isinstance(spec, re.Pattern):
+
+                # Python 3.6 doesn't have re.Pattern
+                elif isinstance(spec, str) or hasattr(spec, 'match'):
+                    if hasattr(spec, 'match'):
                         pat = spec
                     else:
                         pat = re.compile(spec)
