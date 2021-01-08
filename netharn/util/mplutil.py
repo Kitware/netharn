@@ -1056,7 +1056,7 @@ def colorbar_image(domain, cmap='plasma', dpi=96, shape=(200, 20), transparent=F
     # w, h = 1, 10
     fig.set_size_inches(w, h)
 
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(1, 1, 1)
 
     sm = plt.cm.ScalarMappable(cmap=plt.get_cmap(cmap))
     sm.set_array(domain)
@@ -1114,7 +1114,7 @@ def make_legend_img(classname_to_rgb, dpi=96, shape=(200, 200), mode='line',
     w, h = shape[1] / dpi, shape[0] / dpi
     fig.set_size_inches(w, h)
 
-    ax = fig.add_subplot('111')
+    ax = fig.add_subplot(1, 1, 1)
     for label, color in classname_to_rgb.items():
         append_phantom_legend_label(label, color, type_=mode, ax=ax)
 
