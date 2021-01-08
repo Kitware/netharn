@@ -218,6 +218,7 @@ def _rectify_optimizer(arg, kw):
         >>> optim_ = nh.api.Optimizer.coerce({
         >>>     'optim': 'adam', 'lr': 0.1, 'weight_decay': 1e-4})
         >>> cls, kw = optim_
+        >>> assert kw.pop('params') is None
         >>> #
         >>> model = nh.models.ToyNet2d()
         >>> params = dict(model.named_parameters())

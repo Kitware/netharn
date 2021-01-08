@@ -71,16 +71,14 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
         MultiLayerPerceptronNd...
         >>> shape = self.output_shape_for([1, 128, 7])
         >>> print('shape = {!r}'.format(shape))
-        >>> print('shape.hidden = {}'.format(ub.repr2(shape.hidden, nl=1)))
-        shape = (1, 2, 7)
+        >>> print('shape.hidden = {}'.format(ub.repr2(shape.hidden, nl=2)))
         shape.hidden = {
-            'hidden0': {'conv': (1, 96, 7), 'norm': (1, 96, 7), 'noli': (1, 96, 7)},
-            'dropout0': (1, 96, 7),
-            'hidden1': {'conv': (1, 65, 7), 'norm': (1, 65, 7), 'noli': (1, 65, 7)},
-            'dropout1': (1, 65, 7),
-            'hidden2': {'conv': (1, 34, 7), 'norm': (1, 34, 7), 'noli': (1, 34, 7)},
-            'dropout2': (1, 34, 7),
-            'output': (1, 2, 7),
+            'hidden': {
+                'hidden0': {'conv': (1, 96, 7), 'norm': (1, 96, 7), 'noli': (1, 96, 7)},
+                'hidden1': {'conv': (1, 65, 7), 'norm': (1, 65, 7), 'noli': (1, 65, 7)},
+                'hidden2': {'conv': (1, 34, 7), 'norm': (1, 34, 7), 'noli': (1, 34, 7)},
+                'output': (1, 2, 7),
+            },
         }
         >>> import netharn as nh
         >>> nh.OutputShapeFor(self)._check_consistency([1, 128, 7])
@@ -107,7 +105,8 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
     """
     def __init__(self, dim, in_channels, hidden_channels, out_channels,
                  bias=True, dropout=None, noli='relu', norm='batch',
-                 residual=False, noli_output=False, norm_output=False):
+                 residual=False, noli_output=False, norm_output=False,
+                 standardize_weights=False):
 
         super(MultiLayerPerceptronNd, self).__init__()
         dropout_cls = rectify.rectify_dropout(dim)
@@ -123,8 +122,9 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
 
         hidden = self.hidden = common.Sequential()
         for i, curr_out in enumerate(hidden_channels):
-            layer = conv_norm.ConvNormNd(dim, curr_in, curr_out, kernel_size=1,
-                                         bias=bias, noli=noli, norm=norm)
+            layer = conv_norm.ConvNormNd(
+                dim, curr_in, curr_out, kernel_size=1, bias=bias, noli=noli,
+                norm=norm, standardize_weights=standardize_weights)
             hidden.add_module('hidden{}'.format(i), layer)
             if dropout is not None:
                 hidden.add_module('dropout{}'.format(i), dropout_cls(p=dropout))
@@ -188,10 +188,12 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
             >>> print('self = {!r}'.format(self))
             >>> output_shape = self.output_shape_for( (1, 128, 10))
             >>> print('output_shape = {}'.format(output_shape))
+            >>> import ubelt as ub
             >>> print('{}'.format(ub.repr2(output_shape.hidden.shallow(4), nl=-1)))
 
             >>> receptive_field = self.receptive_field_for()
             >>> print('receptive_field = {}'.format(ub.repr2(receptive_field, nl=1)))
+            >>> import ubelt as ub
             >>> print('{}'.format(ub.repr2(receptive_field.hidden.shallow(2), nl=3)))
 
         Ignore:

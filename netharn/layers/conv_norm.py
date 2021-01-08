@@ -6,6 +6,43 @@ from netharn.layers import common
 import ubelt as ub  # NOQA
 
 
+__devnotes__ = """
+
+There are plenty of resources discussing what the best ordering of
+convolution, normalization, and non-linearities are. Our implementation
+may not be the best. We may also consider incorporating dropout into
+this block layer.
+
+Li 2018 - "Understanding the disharmony between dropout and batch
+normalization by variance shift" - https://arxiv.org/pdf/1801.05134.pdf
+
+    * Advocates for applying Dropout after all BN layers
+
+Chen 2019 - "Rethinking the Usage of Batch Normalization and Dropout in
+the Training of Deep Neural Networks" -
+https://arxiv.org/pdf/1905.05928.pdf
+
+    * Places dropout right after each batch norm with a small p=0.05
+
+    * Notes the "clasical" formulation is Conv-Norm-NoLI
+
+    * Also advocates for Conv-NoLI-Norm-Drop but also uses the output
+      of Conv (before the NoLi etc.) as the base residual values when
+      using skip connections. (They refer to BN-Drop as IC) and phrase
+      the ordering as ReLU-IC-Conv2D.
+
+    * They claim their process is "more stable" but they never quantify
+      it. Their curves are better than baseline, but maybe they just
+      hyperoptimized until they got better curves.
+
+
+There is SO discussion indicating that Szegedy now likes BN after the ReLU:
+
+    * https://stackoverflow.com/questions/39691902/ordering-of-batch-normalization-and-dropout
+
+"""
+
+
 class ConvNormNd(common.Sequential):
     """
     Backbone convolution component. The convolution hapens first, normalization
@@ -14,10 +51,35 @@ class ConvNormNd(common.Sequential):
     CONV[->NORM][->NOLI]
 
     Args:
+        dim (int):
+            dimensionality of the convolutional kernel (can be 0, 1, 2, or 3).
+
+        in_channels (int):
+
+        out_channels (int):
+
+        kernel_size (int | Tuple):
+
+        stride (int | Tuple):
+
+        padding (int | Tuple):
+
+        dilation (int | Tuple):
+
+        groups (int):
+
+        bias (bool):
+
         norm (str, dict, nn.Module): Type of normalizer,
             if None, then normalization is disabled.
+
         noli (str, dict, nn.Module): Type of nonlinearity,
             if None, then normalization is disabled.
+
+        standardize_weights (bool, default=False):
+            Implements weight standardization as described in Qiao 2020 -
+            "Micro-Batch Training with Batch-Channel Normalization and Weight
+            Standardization"- https://arxiv.org/pdf/1903.10520.pdf
 
     Example:
         >>> from netharn.layers.conv_norm import ConvNormNd
@@ -35,7 +97,7 @@ class ConvNormNd(common.Sequential):
         >>> self = ConvNormNd(dim=0, in_channels=16, out_channels=64)
         >>> print(self)
         ConvNormNd(
-          (conv): Linear(in_features=16, out_features=64, bias=True)
+          (conv): Conv0d(in_features=16, out_features=64, bias=True)
           (norm): BatchNorm1d(64, ...)
           (noli): ReLU(...)
         )
@@ -55,13 +117,14 @@ class ConvNormNd(common.Sequential):
     """
     def __init__(self, dim, in_channels, out_channels, kernel_size=1, stride=1,
                  padding=0, dilation=1, groups=1, bias=True, noli='relu',
-                 norm='batch'):
+                 norm='batch', standardize_weights=False):
         super(ConvNormNd, self).__init__()
 
         conv_cls = rectify.rectify_conv(dim)
         conv = conv_cls(in_channels, out_channels, kernel_size=kernel_size,
                         padding=padding, stride=stride, groups=groups,
-                        bias=bias, dilation=dilation)
+                        bias=bias, dilation=dilation,
+                        standardize_weights=standardize_weights)
 
         norm = rectify.rectify_normalizer(out_channels, norm, dim=dim)
         noli = rectify.rectify_nonlinearity(noli, dim=dim)
@@ -74,6 +137,7 @@ class ConvNormNd(common.Sequential):
 
         self.in_channels = in_channels
         self.out_channels = out_channels
+        self.standardize_weights = standardize_weights
         self._dim = dim
 
     def output_shape_for(self, input_shape):
@@ -103,13 +167,14 @@ class ConvNorm1d(ConvNormNd):
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1, bias=True, noli='relu',
-                 norm='batch'):
+                 norm='batch', standardize_weights=False):
         super(ConvNorm1d, self).__init__(dim=1, in_channels=in_channels,
                                          out_channels=out_channels,
                                          kernel_size=kernel_size,
                                          stride=stride, bias=bias,
                                          padding=padding, noli=noli, norm=norm,
-                                         dilation=dilation, groups=groups)
+                                         dilation=dilation, groups=groups,
+                                         standardize_weights=standardize_weights)
 
 
 class ConvNorm2d(ConvNormNd):
@@ -134,13 +199,14 @@ class ConvNorm2d(ConvNormNd):
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, groups=1, bias=True, noli='relu',
-                 norm='batch'):
+                 norm='batch', standardize_weights=False):
         super(ConvNorm2d, self).__init__(dim=2, in_channels=in_channels,
                                          out_channels=out_channels,
                                          kernel_size=kernel_size,
                                          stride=stride, bias=bias,
                                          padding=padding, noli=noli, norm=norm,
-                                         dilation=dilation, groups=groups)
+                                         dilation=dilation, groups=groups,
+                                         standardize_weights=standardize_weights)
 
 
 class ConvNorm3d(ConvNormNd):
@@ -165,13 +231,14 @@ class ConvNorm3d(ConvNormNd):
     """
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  bias=True, padding=0, noli='relu', norm='batch',
-                 groups=1):
+                 groups=1, standardize_weights=False):
         super(ConvNorm3d, self).__init__(dim=3, in_channels=in_channels,
                                          out_channels=out_channels,
                                          kernel_size=kernel_size,
                                          stride=stride, bias=bias,
                                          padding=padding, noli=noli, norm=norm,
-                                         groups=groups)
+                                         groups=groups,
+                                         standardize_weights=standardize_weights)
 
 
 if __name__ == '__main__':
