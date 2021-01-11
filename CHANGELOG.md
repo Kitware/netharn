@@ -14,6 +14,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 * Add preference `"dump_tensorboard"` to completely disable tensorboard
 
+* Ported SubsetSampler, PatchedRandomSampler, and PatchedBatchSampler from
+  bioharn
+
 
 ### Fixed
 

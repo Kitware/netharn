@@ -545,3 +545,130 @@ class RingSampler(object):
         sampled_idxs = self.sample_indices(size)
         sampled_items = self.items[sampled_idxs]
         return sampled_items
+
+
+class PatchedBatchSampler(torch.utils.data.sampler.BatchSampler, ub.NiceRepr):
+    """
+    A modification of the standard torch BatchSampler that allows for
+    specification of ``num_batches=auto``
+
+    Example:
+        >>> data_source = torch.arange(64)
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=None)
+        >>> batch_size = 10
+        >>> drop_last = False
+        >>> num_batches = 'auto'
+        >>> batch_sampler = PatchedBatchSampler(sampler, batch_size, drop_last, num_batches)
+        >>> assert len(list(batch_sampler)) == 7 == len(batch_sampler)
+        >>> batch_sampler = PatchedBatchSampler(sampler, batch_size, drop_last, 3)
+        >>> assert len(list(batch_sampler)) == 3 == len(batch_sampler)
+        >>> batch_sampler = PatchedBatchSampler(sampler, batch_size, drop_last, 1)
+        >>> assert len(list(batch_sampler)) == 1 == len(batch_sampler)
+    """
+    def __init__(self, sampler, batch_size, drop_last, num_batches='auto'):
+        super().__init__(sampler, batch_size, drop_last)
+        self.num_batches = num_batches
+
+    def __len__(self):
+        if self.drop_last:
+            max_num_batches = len(self.sampler) // self.batch_size  # type: ignore
+        else:
+            max_num_batches = (len(self.sampler) + self.batch_size - 1) // self.batch_size  # type: ignore
+        if self.num_batches == 'auto':
+            num_batches = max_num_batches
+        else:
+            num_batches = min(max_num_batches, self.num_batches)
+        return num_batches
+
+    def __iter__(self):
+        num_batches = len(self)
+        for bx, batch in zip(range(num_batches), super().__iter__()):
+            yield batch
+
+
+class PatchedRandomSampler(torch.utils.data.sampler.Sampler, ub.NiceRepr):
+    r"""
+    A modification of the standard torch Sampler that allows specification of
+    ``num_samples``.
+
+    See: https://github.com/pytorch/pytorch/pull/39214
+
+    Example:
+        >>> data_source = torch.arange(10)
+        >>> # with replacement
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=None)
+        >>> assert len(sampler) == 10 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=1)
+        >>> assert len(sampler) == 1 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=5)
+        >>> assert len(sampler) == 5 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=10)
+        >>> assert len(sampler) == 10 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=True, num_samples=15)
+        >>> assert len(sampler) == 15 == len(list(sampler))
+        >>> # without replacement
+        >>> sampler = PatchedRandomSampler(data_source, replacement=False, num_samples=None)
+        >>> assert len(sampler) == 10 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=False, num_samples=1)
+        >>> assert len(sampler) == 1 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=False, num_samples=5)
+        >>> assert len(sampler) == 5 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=False, num_samples=10)
+        >>> assert len(sampler) == 10 == len(list(sampler))
+        >>> sampler = PatchedRandomSampler(data_source, replacement=False, num_samples=15)
+        >>> assert len(sampler) == 10 == len(list(sampler))
+    """
+
+    def __init__(self, data_source, replacement=False, num_samples=None):
+        self.data_source = data_source
+        self.replacement = replacement
+        self._num_samples = num_samples
+
+        if not isinstance(self.replacement, bool):
+            raise ValueError("replacement should be a boolean value, but got "
+                             "replacement={}".format(self.replacement))
+
+        if not isinstance(self.num_samples, int) or self.num_samples <= 0:
+            raise ValueError("num_samples should be a positive integer "
+                             "value, but got num_samples={}".format(self.num_samples))
+
+    @property
+    def num_samples(self):
+        # dataset size might change at runtime
+        if self._num_samples is None:
+            num = len(self.data_source)
+        else:
+            if self.replacement:
+                num = self._num_samples
+            else:
+                num = min(self._num_samples, len(self.data_source))
+        return num
+
+    def __iter__(self):
+        n = len(self.data_source)
+        if self.replacement:
+            return iter(torch.randint(high=n, size=(self.num_samples,), dtype=torch.int64).tolist())
+        return iter(torch.randperm(n).tolist()[:self.num_samples])
+
+    def __len__(self):
+        return self.num_samples
+
+
+class SubsetSampler(torch.utils.data.sampler.Sampler, ub.NiceRepr):
+    """
+    Generates sample indices based on a specified order / subset
+
+    Example:
+        >>> indices = list(range(10))
+        >>> assert indices == list(SubsetSampler(indices))
+    """
+
+    def __init__(self, indices):
+        self.indices = indices
+
+    def __iter__(self):
+        for idx in self.indices:
+            yield idx
+
+    def __len__(self):
+        return len(self.indices)
