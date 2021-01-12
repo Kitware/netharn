@@ -217,7 +217,6 @@ def _dump_measures(tb_data, out_dpath, mode=None, smoothing=0.0,
     import numpy as np
     import kwplot
     import matplotlib as mpl
-
     from kwplot.auto_backends import BackendContext
 
     with BackendContext('agg'):
