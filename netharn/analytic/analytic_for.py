@@ -129,7 +129,23 @@ from collections import OrderedDict
 
 
 class Hidden(OrderedDict, ub.NiceRepr):
-    """ Object for storing hidden states of analystic computation """
+    """
+    Object for storing hidden states of analystic computation
+
+    Example:
+        hidden0 = Hidden()
+        hidden1 = Hidden()
+        from netharn.analytic.output_shape_for import OutputShape
+        hidden0['a'] = (1, 2, 3)
+        hidden0['b'] = (1, 2,)
+        # Note that the **last** value _currently_ (may change)
+        # needs to be the same as what ever the real output is
+        hidden0['c'] = (1,)
+        output0 = OutputShape.coerce((1,), hidden=hidden0)
+        hidden1['c'] = (1, 2, 3)
+        hidden1['d'] = output0
+        print(ub.repr2(hidden1.shallow(2), nl=-1))
+    """
 
     def __nice__(self):
         return ub.repr2(self, nl=0)
