@@ -1274,6 +1274,7 @@ class PerClass_Threshold_Result(ub.NiceRepr, DictProxy):
             >>> cfsn_vecs = ConfusionVectors.demo()
             >>> ovr_cfsn = cfsn_vecs.binarize_ovr(keyby='name')
             >>> self = ovr_cfsn.threshold_curves()['perclass']
+            >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
             >>> kwplot.autompl()
             >>> self.draw()

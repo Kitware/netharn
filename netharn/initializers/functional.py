@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import ubelt as ub
+import warnings
 
 
 def trainable_layers(model, names=False):
@@ -285,6 +286,23 @@ def load_partial_state(model, model_state_dict, leftover=None,
         >>> load_partial_state(model, model_state_dict, association='prefix-hack', verbose=1)
         >>> load_partial_state(model, model_state_dict, association='module-hack', verbose=1)
 
+    Ignore:
+        >>> from bioharn.models.new_models_v1 import *  # NOQA
+        >>> channels = ChannelSpec.coerce('rgb')
+        >>> input_stats = None
+        >>> self = MM_HRNetV2_w18_MaskRCNN(classes=3, channels=channels)
+        >>> filename = self.pretrained_url
+        >>> self._init_backbone_from_pretrained(self.pretrained_url)
+        >>> from bioharn.models.mm_models import _load_mmcv_weights
+        >>> model_state = _load_mmcv_weights(filename)
+        >>> self.detector.backbone.chan_backbones.rgb
+        >>> model = self
+        >>> model_state_dict = model_state
+
+        from netharn.initializers.functional import *  # NOQA
+        import xdev
+        globals().update(**xdev.get_func_kwargs(load_partial_state))
+
     CommandLine:
         xdoctest -m /home/joncrall/code/netharn/netharn/initializers/functional.py load_partial_state:2 --slow
 
@@ -294,7 +312,6 @@ def load_partial_state(model, model_state_dict, leftover=None,
         # association = 'prefix-hack'  # new default
 
     if initializer is not None:
-        import warnings
         warnings.warn('initializer is deprecated use leftover')
         leftover = initializer
 
@@ -375,9 +392,9 @@ def load_partial_state(model, model_state_dict, leftover=None,
                         else:
                             raise AssertionError
                         model_state_dict = ub.map_keys(func, model_state_dict)
-            elif association == 'embedding':
+            elif association in {'embedding', 'isomorphism'}:
                 if verbose > 1:
-                    print('Using subpath embedding assocation, may take some time')
+                    print('Using subpath {} association, may take some time'.format(association))
                 # I believe this is the correct way to solve the problem
                 paths1 = sorted(other_keys)
                 paths2 = sorted(self_state)
@@ -411,24 +428,44 @@ def load_partial_state(model, model_state_dict, leftover=None,
                             new_paths.append(p)
                         return new_paths
 
+                    # Reducing the depth saves a lot of time
                     paths1_ = shrink_paths(paths1)
                     paths2_ = shrink_paths(paths2)
 
-                # Reducing the depth saves a lot of time
-                subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1_, paths2_, sep='.')
+                subpaths1, subpaths2 = maximum_common_ordered_subpaths(paths1_, paths2_, sep='.', mode=association)
                 subpaths1 = [p.replace(':', '.') for p in subpaths1]
                 subpaths2 = [p.replace(':', '.') for p in subpaths2]
                 mapping = ub.dzip(subpaths1, subpaths2)
                 if verbose > 1:
-                    other_unmapped = other_keys - set(mapping.keys())
-                    self_unmapped = self_keys - set(mapping.values())
+                    other_unmapped = sorted(other_keys - set(mapping.keys()))
+                    self_unmapped = sorted(self_keys - set(mapping.values()))
                     print('-- embed association (other -> self) --')
                     print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
                     print('self_unmapped = {}'.format(ub.repr2(self_unmapped, nl=1)))
                     print('other_unmapped = {}'.format(ub.repr2(other_unmapped, nl=1)))
+                    print('len(mapping) = {}'.format(ub.repr2(len(mapping), nl=1)))
+                    print('len(self_unmapped) = {}'.format(ub.repr2(len(self_unmapped), nl=1)))
+                    print('len(other_unmapped) = {}'.format(ub.repr2(len(other_unmapped), nl=1)))
                     print('-- end embed association --')
 
-                model_state_dict = ub.map_keys(lambda k: mapping.get(k, k), model_state_dict)
+                # HACK: something might be wrong, there was an instance with
+                # HRNet_w32 where multiple keys mapped to the same key
+                # bad keys were incre_modules.3.0.conv1.weight and conv1.weight
+                #
+                # This will not error, but may produce bad output
+                try:
+                    model_state_dict = ub.map_keys(
+                        lambda k: mapping.get(k, k), model_state_dict)
+                except Exception as ex:
+                    HACK = 1
+                    if HACK:
+                        new_state_dict_ = {}
+                        for k, v in model_state_dict.items():
+                            new_state_dict_[mapping.get(k, k)] = v
+                        model_state_dict = new_state_dict_
+                        warnings.warn('ex = {!r}'.format(ex))
+                    else:
+                        raise
             else:
                 raise KeyError(association)
         return model_state_dict

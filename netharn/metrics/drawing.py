@@ -129,10 +129,10 @@ def draw_perclass_prcurve(cx_to_peritem, classes=None, prefix='', fnum=1, **kw):
         >>> cfsn_vecs = dmet.confusion_vectors()
         >>> classes = cfsn_vecs.classes
         >>> cx_to_peritem = cfsn_vecs.binarize_ovr().precision_recall()['perclass']
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> draw_perclass_prcurve(cx_to_peritem, classes)
-        >>> # xdoctest: +REQUIRES(--show)
         >>> kwplot.show_if_requested()
     """
     import kwplot
@@ -208,11 +208,11 @@ def draw_perclass_thresholds(cx_to_peritem, key='mcc', classes=None, prefix='', 
         >>> classes = cfsn_vecs.classes
         >>> ovr_cfsn = cfsn_vecs.binarize_ovr(keyby='name')
         >>> cx_to_peritem = ovr_cfsn.threshold_curves()['perclass']
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> key = 'mcc'
         >>> draw_perclass_thresholds(cx_to_peritem, key, classes)
-        >>> # xdoctest: +REQUIRES(--show)
         >>> kwplot.show_if_requested()
     """
     import kwplot
@@ -280,10 +280,10 @@ def draw_prcurve(peritem, prefix='', fnum=1, **kw):
 
         >>> classes = cfsn_vecs.classes
         >>> peritem = cfsn_vecs.binarize_peritem().precision_recall()
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> draw_prcurve(peritem)
-        >>> # xdoctest: +REQUIRES(--show)
         >>> kwplot.show_if_requested()
     """
     import kwplot
@@ -341,10 +341,10 @@ def draw_threshold_curves(info, keys=None, prefix='', fnum=1, **kw):
         >>> cfsn_vecs = dmet.confusion_vectors()
         >>> info = cfsn_vecs.binarize_peritem().threshold_curves()
         >>> keys = None
+        >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> kwplot.autompl()
         >>> draw_threshold_curves(info, keys)
-        >>> # xdoctest: +REQUIRES(--show)
         >>> kwplot.show_if_requested()
     """
     import kwplot

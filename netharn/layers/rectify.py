@@ -148,18 +148,207 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
         kw.update(kwargs)
         return cls(**kw)
     except Exception:
+        raise
         # Ignore kwargs
         import warnings
         warnings.warn('kwargs ignored in rectify normalizer')
         return cls(**key)
 
 
+def _ws_extra_repr(self):
+    s = ('{in_channels}, {out_channels}, kernel_size={kernel_size}'
+         ', stride={stride}')
+    if self.padding != (0,) * len(self.padding):
+        s += ', padding={padding}'
+    if self.dilation != (1,) * len(self.dilation):
+        s += ', dilation={dilation}'
+    if self.output_padding != (0,) * len(self.output_padding):
+        s += ', output_padding={output_padding}'
+    if self.groups != 1:
+        s += ', groups={groups}'
+    if self.bias is None:
+        s += ', bias=False'
+    if self.padding_mode != 'zeros':
+        s += ', padding_mode={padding_mode}'
+    if self.standardize_weights:
+        s += ', standardize_weights={standardize_weights}'
+    return s.format(**self.__dict__)
+
+
+def weight_standardization_nd(dim, weight, eps):
+    """
+    Note: input channels must be greater than 1!
+
+    weight = torch.rand(3, 2, 1, 1)
+    dim = 2
+    eps = 1e-5
+    weight_normed = weight_standardization_nd(dim, weight, eps)
+    print('weight = {!r}'.format(weight))
+    print('weight_normed = {!r}'.format(weight_normed))
+
+    weight = torch.rand(1, 2)
+    dim = 0
+    eps = 1e-5
+    weight_normed = weight_standardization_nd(dim, weight, eps)
+    print('weight = {!r}'.format(weight))
+    print('weight_normed = {!r}'.format(weight_normed))
+    """
+    # Note: In 2D Weight dimensions are [C_out, C_in, H, W]
+    mean_dims = tuple(list(range(1, dim + 2)))
+    weight_mean = weight.mean(dim=mean_dims, keepdim=True)
+    weight = weight - weight_mean
+    trailing = [1] * (dim + 1)
+    std = weight.view(weight.shape[0], -1).std(dim=1).view(-1, *trailing) + eps
+    weight = weight / std.expand_as(weight)
+    return weight
+
+
+class Conv0d(torch.nn.Linear):
+    """
+    self = Conv0d(2, 3, 1, standardize_weights=True)
+    print('self = {!r}'.format(self))
+    x = torch.rand(1, 2)
+    y = self.forward(x)
+    print('y = {!r}'.format(y))
+    """
+    def __init__(self, in_channels, out_channels, kernel_size=1, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True,
+                 padding_mode='zeros', standardize_weights=False):
+        assert kernel_size == 1, 'Conv0D must have a kernel_size=1'
+        assert padding == 0, 'Conv0D must have padding=1'
+        assert stride == 1, 'Conv0D must have stride=1'
+        assert groups == 1, 'Conv0D must have groups=1'
+        assert dilation == 1, 'Conv0D must have a dilation=1'
+        # assert padding_mode == 'zeros'
+        super().__init__(in_features=in_channels, out_features=out_channels,
+                         bias=bias)
+        self.standardize_weights = standardize_weights
+        if standardize_weights:
+            assert in_channels > 1, 'must be greater than 1 to prevent nan'
+        self.dim = 0
+        self.eps = 1e-5
+
+    def forward(self, x):
+        if self.standardize_weights:
+            weight = weight_standardization_nd(self.dim, self.weight, self.eps)
+            return torch.nn.functional.linear(x, weight, self.bias)
+        else:
+            return super().forward(x)
+
+    def extra_repr(self) -> str:
+        s = 'in_features={}, out_features={}, bias={}'.format(
+            self.in_features, self.out_features, self.bias is not None
+        )
+        if self.standardize_weights:
+            s += ', standardize_weights={standardize_weights}'
+        return s
+
+
+class Conv1d(torch.nn.Conv1d):
+    """
+    self = Conv1d(2, 3, 1, standardize_weights=True)
+    print('self = {!r}'.format(self))
+    x = torch.rand(1, 2, 1)
+    y = self.forward(x)
+    print('y = {!r}'.format(y))
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True,
+                 standardize_weights=False):
+        super().__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            groups, bias)
+        self.standardize_weights = standardize_weights
+        if standardize_weights:
+            assert in_channels > 1, 'must be greater than 1 to prevent nan'
+        self.eps = 1e-5
+        self.dim = 1
+
+    def forward(self, x):
+        if self.standardize_weights:
+            weight = weight_standardization_nd(self.dim, self.weight, self.eps)
+            return torch.nn.functional.conv1d(
+                x, weight, self.bias, self.stride, self.padding, self.dilation,
+                self.groups)
+        else:
+            return super().forward(x)
+
+    extra_repr = _ws_extra_repr
+
+
+class Conv2d(torch.nn.Conv2d):
+    """
+    self = Conv2d(2, 3, 1, standardize_weights=True)
+    print('self = {!r}'.format(self))
+    x = torch.rand(1, 2, 3, 3)
+    y = self.forward(x)
+    print('y = {!r}'.format(y))
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True,
+                 standardize_weights=False):
+        super().__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            groups, bias)
+        self.standardize_weights = standardize_weights
+        if standardize_weights:
+            assert in_channels > 1, 'must be greater than 1 to prevent nan'
+        self.eps = 1e-5
+        self.dim = 2
+
+    def forward(self, x):
+        if self.standardize_weights:
+            weight = weight_standardization_nd(self.dim, self.weight, self.eps)
+            return torch.nn.functional.conv2d(
+                x, weight, self.bias, self.stride, self.padding, self.dilation,
+                self.groups)
+        else:
+            return super().forward(x)
+
+    extra_repr = _ws_extra_repr
+
+
+class Conv3d(torch.nn.Conv3d):
+    """
+    self = Conv3d(2, 3, 1, standardize_weights=True)
+    print('self = {!r}'.format(self))
+    x = torch.rand(1, 2, 1, 1, 1)
+    y = self.forward(x)
+    print('y = {!r}'.format(y))
+    """
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1,
+                 padding=0, dilation=1, groups=1, bias=True,
+                 standardize_weights=False):
+        super().__init__(
+            in_channels, out_channels, kernel_size, stride, padding, dilation,
+            groups, bias)
+        self.standardize_weights = standardize_weights
+        if standardize_weights:
+            assert in_channels > 1, 'must be greater than 1 to prevent nan'
+        self.eps = 1e-5
+        self.dim = 3
+
+    def forward(self, x):
+        if self.standardize_weights:
+            weight = weight_standardization_nd(self.dim, self.weight, self.eps)
+            return torch.nn.functional.conv3d(
+                x, weight, self.bias, self.stride, self.padding, self.dilation,
+                self.groups)
+        else:
+            return super().forward(x)
+
+    extra_repr = _ws_extra_repr
+
+
 def rectify_conv(dim=2):
     conv_cls = {
-        0: torch.nn.Linear,
-        1: torch.nn.Conv1d,
-        2: torch.nn.Conv2d,
-        3: torch.nn.Conv3d,
+        0: Conv0d,
+        # 1: torch.nn.Conv1d,
+        # 2: torch.nn.Conv2d,
+        # 3: torch.nn.Conv3d,
+        1: Conv1d,
+        2: Conv2d,
+        3: Conv3d,
     }[dim]
     return conv_cls
 

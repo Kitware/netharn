@@ -168,7 +168,7 @@ def _demodata_workdir():
     return workdir
 
 
-def collect_sessions(workdir):
+def collect_sessions(workdir, eager=True):
     """
     Netharn writes all training runs into a work directory under
     <workdir>/fit/runs/<hash>/<name>.  And makes symlinks in
@@ -184,7 +184,7 @@ def collect_sessions(workdir):
 
     all_sessions = []
     for dpath in ub.ProgIter(training_dpaths, desc='collect sessions', freq=1):
-        session = Session(dpath)
+        session = Session(dpath, eager=eager)
         all_sessions.append(session)
     return all_sessions
 
@@ -198,14 +198,25 @@ class Session(ub.NiceRepr):
         - [ ] Better convinience methods
         - [ ] Log parsing
     """
-    def __init__(session, dpath):
-        session.dpath = dpath
-        info, details = session.build_info()
-        session.info = info
-        session.details = details
+    def __init__(session, dpath, eager=True):
+        session.info = {
+            'dpath': dpath,
+        }
+        session.details = {}
+
+        if eager:
+            session.build_info()
 
     def __nice__(session):
         return repr(session.info)
+
+    @property
+    def dpath(session):
+        return session.info['dpath']
+
+    @ub.memoize_property
+    def name(session):
+        return basename(dirname(session.dpath))
 
     @ub.memoize_property
     def checkpoints(session):
@@ -221,10 +232,6 @@ class Session(ub.NiceRepr):
         else:
             checkpoints = []
         return checkpoints
-
-    @ub.memoize_property
-    def name(session):
-        return basename(dirname(session.dpath))
 
     @ub.memoize_property
     def is_linked(session):
@@ -253,12 +260,12 @@ class Session(ub.NiceRepr):
         """
         Stats about a training session
         """
-        info = {}
+        info = session.info
         info['linked'] = session.is_linked
 
         dpath = realpath(session.dpath)
         best_snapshot_fpath = join(dpath, 'best_snapshot.pt')
-        details = {}
+        details = session.details
         details['best_snapshot'] = best_snapshot_fpath if exists(best_snapshot_fpath) else None
         details['deployed'] = [p for p in glob.glob(join(dpath, '*.zip')) if not ub.util_links.islink(p)]
         details['checkpoints'] = session.checkpoints

@@ -38,6 +38,7 @@ Note:
 
 CommandLine:
     xdoctest netharn.fit_harn __doc__:0
+    xdoctest netharn.fit_harn __doc__:0 --debug
     xdoctest netharn.fit_harn __doc__:0 --profile --xpu=cpu
 
 Example:
@@ -533,7 +534,8 @@ class InitializeMixin(object):
             stdout_handler = logging.StreamHandler(sys.stdout)
             stdout_handler.setFormatter(s_formatter)
 
-            if harn.preferences['verbose'] > 1 or ub.argflag('--verbose'):
+            if (harn.preferences['verbose'] > 1 or
+                  ub.argflag(('--verbose', '--debug'))):
                 stdout_handler.setLevel(logging.DEBUG)
             else:
                 stdout_handler.setLevel(logging.INFO)
@@ -637,7 +639,7 @@ class InitializeMixin(object):
         # https://towardsdatascience.com/understanding-learning-rates-and-how-it-improves-performance-in-deep-learning-d0d4059c1c10
         # https://arxiv.org/pdf/1801.06146.pdf
         # https://discuss.pytorch.org/t/implementing-differential-learning-rate-by-parameter-groups/32903
-        harn.optimizer = harn.hyper.make_optimizer(harn.model.parameters())
+        harn.optimizer = harn.hyper.make_optimizer(harn.model.named_parameters())
 
         harn.debug('Make scheduler')
         # Note: this will usually overwrite any default LR in the optimizer
@@ -1805,7 +1807,7 @@ class CoreMixin(object):
 
         terminate_flag = harn._check_termination()
 
-        if harn._tlog is not None:
+        if harn._tlog is not None and harn.preferences['dump_tensorboard']:
             if not harn.preferences['eager_dump_tensorboard']:
                 # If we did not dump iteration metrics in the inner loop then
                 # do it here.
@@ -1846,7 +1848,10 @@ class CoreMixin(object):
     def _run_epoch(harn, loader, tag, learn=False, max_iter=np.inf,
                    call_on_epoch=True):
         """
-        evaluate the model on test / train / or validation data
+        Run a single epoch of test / train / or validation
+
+        Notes:
+            THE CRITICAL LOOP LIVES HERE
 
         Args:
             loader (torch.utils.data.DataLoader):
@@ -1915,6 +1920,9 @@ class CoreMixin(object):
         use_tqdm = harn.preferences['prog_backend'] == 'tqdm'
         timeout = harn.preferences['timeout']
         _timer = harn._timer
+
+        if harn.preferences['log_resources']:
+            harn.debug(ub.repr2(util.resource_usage(), nl=1))
 
         if isinstance(prog, ub.ProgIter):
             prog.begin()
@@ -2028,8 +2036,16 @@ class CoreMixin(object):
                             iter_idx = harn.iter_index
                             for key, value in ave_metrics.items():
                                 harn.log_value(tag + ' iter ' + key, value, iter_idx)
+
+                            if harn.preferences['log_resources']:
+                                usage = util.resource_usage()
+                                key = 'ram'
+                                value = usage['ram_percent']
+                                harn.log_value(tag + ' iter ' + key, value, iter_idx)
+                                harn.debug(ub.repr2(usage, nl=1))
+
                             if harn._tlog is not None:
-                                if harn.preferences['eager_dump_tensorboard']:
+                                if (harn.preferences['dump_tensorboard'] and harn.preferences['eager_dump_tensorboard']):
                                     # Dump tensorboard metrics to png / pickle.
                                     from netharn.mixins import _dump_monitor_tensorboard
                                     _dump_monitor_tensorboard(
@@ -2079,6 +2095,13 @@ class CoreMixin(object):
         #            for name, param in harn.model.named_parameters()):
         #         harn.optimizer.step()
         #         harn.optimizer.zero_grad()
+
+        if harn.preferences['log_resources']:
+            usage = util.resource_usage()
+            key = 'ram'
+            value = usage['ram_percent']
+            harn.log_value(tag + ' epoch ' + key, value, harn.epoch)
+            harn.debug(ub.repr2(usage, nl=1))
 
         prog.refresh()
         if not use_tqdm:
@@ -2846,7 +2869,12 @@ class FitHarnPreferences(scfg.Config):
 
         'eager_dump_tensorboard': scfg.Value(True, help=(
             'If True, logs tensorboard within inner iteration '
-            '(experimental)')
+            '(experimental). No effect if dump_tensorboard is True')
+        ),
+
+        'dump_tensorboard': scfg.Value(True, help=(
+            'If True, tensorboard information is visualized with '
+            'matplotlib and dumped as an image'),
         ),
 
         'tensorboard_groups': scfg.Value(['loss'], help=(
@@ -2892,6 +2920,10 @@ class FitHarnPreferences(scfg.Config):
         'verbose': scfg.Value(1, help=(
             'verbosity level, '
             'if >1 shows debug info in stdout')),
+
+        'log_resources': scfg.Value(True, help=(
+            'Track system resource usage like RAM and disk space')
+        ),
 
         # Deprecated
         'use_tqdm': scfg.Value(None, help='deprecated'),
