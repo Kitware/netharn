@@ -2040,8 +2040,9 @@ class CoreMixin(object):
                             if harn.preferences['log_resources']:
                                 usage = util.resource_usage()
                                 key = 'ram'
-                                value = usage['ram_percent']
-                                harn.log_value(tag + ' iter ' + key, value, iter_idx)
+                                if 'ram_percent' in usage:
+                                    value = usage['ram_percent']
+                                    harn.log_value(tag + ' iter ' + key, value, iter_idx)
                                 harn.debug(ub.repr2(usage, nl=1))
 
                             if harn._tlog is not None:

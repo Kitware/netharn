@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## Version 0.5.14 - Unreleased
 
 
+### Deprecated
+
+* Removed deprecated kwimage, kwarray, and kwplot attributes. Accessing them
+  will now raise errors.
+
+
+
 ## Version 0.5.13 - Released 2021-01-19
 
 ### Added

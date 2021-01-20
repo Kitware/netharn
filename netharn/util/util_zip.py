@@ -1,13 +1,19 @@
 # -*- coding: utf-8 -*-
+"""
+Utilities for opening files within a zip archive without explicitly unpacking
+it to disk.
+
+TODO:
+    - [ ] Move to ubelt?
+"""
 from __future__ import absolute_import, division, print_function, unicode_literals
-from os.path import exists
+import os
 import io
-from os.path import join
-from os.path import os
+import re
 import tempfile
 import zipfile
 import ubelt as ub
-import re
+from os.path import exists, join
 
 
 def split_archive(fpath):
