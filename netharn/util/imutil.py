@@ -3,15 +3,10 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import glob
 from os.path import expanduser, exists, join, basename
 import numpy as np
-# try:
-#     # Don't import skimage.io immediately because it imports pyplot
-#     # See GH Issue https://github.com/scikit-image/scikit-image/issues/3347
-#     import skimage.io
-# except ImportError:
-#     pass
 
 
 def load_image_paths(dpath, ext=('.png', '.tiff', 'tif')):
+    # DEPRECATE
     dpath = expanduser(dpath)
     if not exists(dpath):
         raise ValueError('dpath = {} does not exist'.format(dpath))
@@ -208,22 +203,23 @@ def adjust_gamma(img, gamma=1.0):
         http://www.pyimagesearch.com/2015/10/05/opencv-gamma-correction/
 
     Ignore:
-        >>> from netharn import util
-        >>> fpath = util.grab_test_image()
-        >>> img = util.imread(fpath)
+        >>> # xdoctest: +REQUIRES(module:kwplot, module:kwimage)
+        >>> import kwimage
+        >>> fpath = kwimage.grab_test_image()
+        >>> img = kwimage.imread(fpath)
         >>> gamma = .5
         >>> imgf = ensure_float01(img)
         >>> img2 = adjust_gamma(img, gamma)
         >>> img3 = adjust_gamma(imgf, gamma)
-        >>> import plottool as pt
-        >>> pt.qtensure()
-        >>> pt.imshow(img, pnum=(3, 3, 1), fnum=1)
-        >>> pt.imshow(img2, pnum=(3, 3, 2), fnum=1)
-        >>> pt.imshow(img3, pnum=(3, 3, 3), fnum=1)
-        >>> pt.imshow(adjust_gamma(img, 1), pnum=(3, 3, 5), fnum=1)
-        >>> pt.imshow(adjust_gamma(imgf, 1), pnum=(3, 3, 6), fnum=1)
-        >>> pt.imshow(adjust_gamma(img, 2), pnum=(3, 3, 8), fnum=1)
-        >>> pt.imshow(adjust_gamma(imgf, 2), pnum=(3, 3, 9), fnum=1)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> kwplot.imshow(img, pnum=(3, 3, 1), fnum=1)
+        >>> kwplot.imshow(img2, pnum=(3, 3, 2), fnum=1)
+        >>> kwplot.imshow(img3, pnum=(3, 3, 3), fnum=1)
+        >>> kwplot.imshow(adjust_gamma(img, 1), pnum=(3, 3, 5), fnum=1)
+        >>> kwplot.imshow(adjust_gamma(imgf, 1), pnum=(3, 3, 6), fnum=1)
+        >>> kwplot.imshow(adjust_gamma(img, 2), pnum=(3, 3, 8), fnum=1)
+        >>> kwplot.imshow(adjust_gamma(imgf, 2), pnum=(3, 3, 9), fnum=1)
     """
     import cv2
     if img.dtype.kind in ('i', 'u'):

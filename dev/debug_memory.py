@@ -280,6 +280,12 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=4
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=4
 
+        srun -c 5 -p community --gres=gpu:1 \
+            python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=4
+
+            python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False --workers=4
+
+
         python debug_memory.py numpy dict 24e5
         python debug_memory.py python list 24e7
 

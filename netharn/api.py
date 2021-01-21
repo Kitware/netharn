@@ -807,17 +807,34 @@ def configure_hacks(config={}, **kw):
     Configures hacks to fix global settings in external modules
 
     Args:
-        config (dict): exected to contain they key "workers" with an
-           integer value equal to the number of dataloader processes.
+        config (dict): exected to contain certain special keys.
+
+            * "workers" with an integer value equal to the number of dataloader
+                processes.
+
+            * "sharing_strategy" to specify the torch multiprocessing backend
+
         **kw: can also be used to specify config items
 
     Modules we currently hack:
         * cv2 - fix thread count
+        * torch sharing strategy
     """
     config = _update_defaults(config, kw)
-    if config['workers'] > 0:
+
+    if config.get('workers', 0) > 0:
         import cv2
         cv2.setNumThreads(0)
+
+    strat = config.get('sharing_strategy', None)
+    if strat is not None and strat != 'default':
+        if strat == 'auto':
+            # TODO: can we add a better auto test?
+            strat = torch.multiprocessing.get_sharing_strategy()
+        valid_strats = torch.multiprocessing.get_all_sharing_strategies()
+        if strat not in valid_strats:
+            raise KeyError('start={} is not in valid_strats={}'.format(strat, valid_strats))
+        torch.multiprocessing.set_sharing_strategy(strat)
 
 
 def configure_workdir(config={}, **kw):

@@ -4,7 +4,17 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.13 - Unreleased
+## Version 0.5.14 - Unreleased
+
+
+### Deprecated
+
+* Removed deprecated kwimage, kwarray, and kwplot attributes. Accessing them
+  will now raise errors.
+
+
+
+## Version 0.5.13 - Released 2021-01-19
 
 ### Added
 

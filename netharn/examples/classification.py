@@ -302,7 +302,7 @@ class ClfDataset(torch.utils.data.Dataset):
         self.augmenter = None
         self.conditional_augmentors = None
         self.input_dims = input_dims
-        self.classes = self.sampler.catgraph
+        self.classes = self.sampler.classes
 
         self.augmenter = self._coerce_augmenter(augmenter)
 

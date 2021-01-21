@@ -2,7 +2,6 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import ubelt as ub
 import numpy as np
-import netharn as nh
 import torch
 import itertools as it
 
@@ -85,6 +84,7 @@ class SlidingWindow(ub.NiceRepr):
     """
     def __init__(self, shape, window, overlap=None, stride=None,
                  keepbound=False, allow_overshoot=False):
+        import netharn as nh
 
         if overlap is None and stride is None:
             overlap = 0
@@ -374,6 +374,7 @@ class Stitcher(ub.NiceRepr):
 
         Example:
             >>> import sys
+            >>> import netharn as nh
             >>> # Build a high resolution image and slice it into chips
             >>> frames = np.random.rand(1, 200, 100, 100).astype(np.float32)
             >>> window = (frames.shape[0], 15, 15, 15)
@@ -416,6 +417,7 @@ class Stitcher(ub.NiceRepr):
 
         Benchmark:
             >>> import sys
+            >>> import netharn as nh
             >>> # setup benchmark
             >>> frames = np.random.rand(1, 50, 100, 100).astype(np.float32)
             >>> window = (frames.shape[0], 20, 20, 20)
