@@ -1,11 +1,5 @@
 
 def _lookup_deprecated_attribute(key):
-    """
-    Provide a module level getattr to give better error messages on deprecated
-    and removed attributes
-
-    Our deprecation errors will only work in Python 3.7
-    """
     import ubelt as ub
     # mapping from module name to the attributes that were moved there.
     refactored = {
@@ -84,3 +78,5 @@ def _lookup_deprecated_attribute(key):
         raise AttributeError(
             'Deprecated {}, but still available in '
             'netharn.util.util_slider_dep'.format(key))
+
+    raise AttributeError(key)

@@ -10,8 +10,15 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 def __getattr__(key):
+    """
+    Provide a module level getattr to give better error messages on deprecated
+    and removed attributes
+
+    Our deprecation errors will only work in Python 3.7+
+    """
     from netharn.util._deprecation_helpers import _lookup_deprecated_attribute
     return _lookup_deprecated_attribute(key)
+
 
 __submodules__ = [
     'imutil',
