@@ -2100,8 +2100,9 @@ class CoreMixin(object):
         if harn.preferences['log_resources']:
             usage = util.resource_usage()
             key = 'ram'
-            value = usage['ram_percent']
-            harn.log_value(tag + ' epoch ' + key, value, harn.epoch)
+            if 'ram_percent' in usage:
+                value = usage['ram_percent']
+                harn.log_value(tag + ' epoch ' + key, value, harn.epoch)
             harn.debug(ub.repr2(usage, nl=1))
 
         prog.refresh()
