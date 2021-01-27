@@ -403,15 +403,6 @@ class ClfDataset(torch.utils.data.Dataset):
         if len(self) == 0:
             raise Exception('must have some data')
 
-        def worker_init_fn(worker_id):
-            for i in range(worker_id + 1):
-                seed = np.random.randint(0, int(2 ** 32) - 1)
-            seed = seed + worker_id
-            kwarray.seed_global(seed)
-            if self.augmenter:
-                rng = kwarray.ensure_rng(None)
-                self.augmenter.seed_(rng)
-
         loaderkw = {
             'num_workers': num_workers,
             'pin_memory': pin_memory,
@@ -435,6 +426,20 @@ class ClfDataset(torch.utils.data.Dataset):
 
         loader = torch.utils.data.DataLoader(self, **loaderkw)
         return loader
+
+
+def worker_init_fn(worker_id, augmenter=None):
+    for i in range(worker_id + 1):
+        seed = np.random.randint(0, int(2 ** 32) - 1)
+    seed = seed + worker_id
+    kwarray.seed_global(seed)
+
+    worker_info = torch.utils.data.get_worker_info()
+    self = worker_info.dataset
+
+    if self.augmenter:
+        rng = kwarray.ensure_rng(None)
+        self.augmenter.seed_(rng)
 
 
 class ClfHarn(nh.FitHarn):

@@ -85,7 +85,7 @@ def test_yolo_lr():
     hyper = {
         # --- data first
         'datasets'    : datasets,
-        'nice'        : 'restart_lr',
+        'name'        : 'restart_lr',
         'workdir'     : ub.ensure_app_cache_dir('netharn/test/restart_lr'),
         'loaders'     : {'batch_size': bsize},
         'xpu'         : nh.XPU.coerce('cpu'),
