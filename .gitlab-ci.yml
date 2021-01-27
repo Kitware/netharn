@@ -76,8 +76,6 @@ stages:
         - python -V  # Print out python version for debugging
         - pip install --progress-bar off -r requirements.txt
         - pip install .
-        # FIXME: we should start from a docker iamge that already has LibGL setup
-        - apt update && apt install libgl1-mesa-glx -y && rm -rf /var/lib/apt/lists/*  
 
     script: 
         - ./run_tests.py
@@ -164,8 +162,9 @@ stages:
         - GLKWS=$CI_KITWARE_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_key.pgp.enc | $GPG_EXECUTABLE --import 
         - $GPG_EXECUTABLE --list-keys  || echo "first one fails for some reason"
         - $GPG_EXECUTABLE --list-keys  
+        - pip install requests[security] twine 
         # The publish script only builds wheels and does gpg signing if TAG_AND_UPLOAD is False
-        - MB_PYTHON_TAG=$MB_PYTHON_TAG USE_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE DEPLOY_BRANCH=release TAG_AND_UPLOAD=False ./publish.sh 
+        - MB_PYTHON_TAG=$MB_PYTHON_TAG DO_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE DEPLOY_BRANCH=release DO_TAG=False DO_UPLOAD=False ./publish.sh 
 
     artifacts:
         paths:
@@ -208,7 +207,7 @@ stages:
         - pip install six pyopenssl ndg-httpsclient pyasn1 -U 
         - pip install requests[security] twine 
         # Execute the publish script for real this time
-        - MB_PYTHON_TAG=$MB_PYTHON_TAG USE_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE CURRENT_BRANCH=release DEPLOY_BRANCH=release TAG_AND_UPLOAD=yes ./publish.sh 
+        - MB_PYTHON_TAG=$MB_PYTHON_TAG DO_GPG=True GPG_KEYID=$GPG_KEYID TWINE_PASSWORD=$TWINE_PASSWORD TWINE_USERNAME=$TWINE_USERNAME GPG_EXECUTABLE=$GPG_EXECUTABLE CURRENT_BRANCH=release DEPLOY_BRANCH=release DO_TAG=True DO_UPLOAD=True ./publish.sh 
         # Have the server git-tag the release and push the tags
         - VERSION=$(python -c "import setup; print(setup.VERSION)")
         # do sed twice to handle the case of https clone with and without a read token
@@ -237,13 +236,13 @@ build/cp38-cp38-linux:
     <<: 
         - *build_template
     image:
-        python:3.8
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
 
 test_full/cp38-cp38-linux:
     <<: 
         - *test_full_template
     image:
-        python:3.8
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
 
 
 # for universal builds we only need to gpg sign once
@@ -251,13 +250,13 @@ gpgsign/cp38-cp38-linux:
     <<: 
         - *gpgsign_template
     image:
-        python:3.8
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
 
 deploy/cp38-cp38-linux:
     <<: 
         - *deploy_template
     image:
-        python:3.8
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.8
 
 
 # ---------------
@@ -267,13 +266,13 @@ build/cp37-cp37m-linux:
     <<: 
         - *build_template
     image:
-        python:3.7
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
 
 test_full/cp37-cp37m-linux:
     <<: 
         - *test_full_template
     image:
-        python:3.7
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.7
 
 
 # ---------------
@@ -283,23 +282,23 @@ build/cp36-cp36m-linux:
     <<: 
         - *build_template
     image:
-        python:3.6
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
 
 test_full/cp36-cp36m-linux:
     <<: 
         - *test_full_template
     image:
-        python:3.6
+        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
 
 #gpgsign/cp36-cp36m-linux:
 #    <<: 
 #        - *gpgsign_template
 #    image:
-#        python:3.6
+#        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
 
 #deploy/cp36-cp36m-linux:
 #    <<: 
 #        - *deploy_template
 #    image:
-#        python:3.6
+#        gitlab.kitware.com:4567/computer-vision/ci-docker/gl-python:3.6
 
