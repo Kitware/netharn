@@ -98,6 +98,9 @@ def is_symlink_broken(path):
         https://stackoverflow.com/questions/20794/find-broken-symlinks-with-python
 
     Example:
+        >>> import pytest
+        >>> if ub.WIN32:
+        >>>     pytest.skip('symlink checks on windows dont always work')
         >>> test_dpath = ub.ensure_app_cache_dir('test')
         >>> real_fpath = ub.touch(join(test_dpath, 'real'))
         >>> link_fpath = ub.symlink(real_fpath, join(test_dpath, 'link'))
