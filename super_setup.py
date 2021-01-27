@@ -385,10 +385,11 @@ class Repo(ub.NiceRepr):
             warnings.warn('super_setup develop may not work on win32')
             repo._cmd('pip install -e .', cwd=repo.dpath)
         else:
-            devsetup_script_fpath = join(repo.dpath, 'run_developer_setup.sh')
-            if not exists(devsetup_script_fpath):
-                raise AssertionError('Assume we always have run_developer_setup.sh: repo={!r}'.format(repo))
-            repo._cmd(devsetup_script_fpath, cwd=repo.dpath)
+            repo._cmd('pip install -e .', cwd=repo.dpath)
+            # devsetup_script_fpath = join(repo.dpath, 'run_developer_setup.sh')
+            # if not exists(devsetup_script_fpath):
+            #     raise AssertionError('Assume we always have run_developer_setup.sh: repo={!r}'.format(repo))
+            # repo._cmd(devsetup_script_fpath, cwd=repo.dpath)
 
     def doctest(repo):
         if ub.WIN32:
