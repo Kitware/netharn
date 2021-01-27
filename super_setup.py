@@ -768,7 +768,7 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.14', 'remote': 'public',
+        'name': 'kwarray', 'branch': 'dev/0.5.15', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
@@ -804,13 +804,13 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.5.12', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.5.14', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.14', 'remote': 'public',
+        'name': 'netharn', 'branch': 'dev/0.5.15', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]
