@@ -545,7 +545,7 @@ class Repo(ub.NiceRepr):
                         raise
 
         # Ensure we have the right remote
-        remote = repo._registered_remote()
+        remote = repo._registered_remote(dry=dry)
 
         if remote is not None:
             try:
@@ -580,7 +580,27 @@ class Repo(ub.NiceRepr):
                     repo._cmd('git remote set-url {} {}'.format(repo.remote, repo.url))
 
             # Ensure we are on the right branch
-            if repo.branch != repo.pygit.active_branch.name:
+            try:
+                active_branch_name = repo.pygit.active_branch.name
+            except TypeError:
+                # We may be on a tag, not a branch
+                candidates = [tag for tag in repo.pygit.tags if tag.name == repo.branch]
+                if len(candidates) != 1:
+                    raise
+                else:
+                    # branch is actually a tag
+                    assert len(candidates) == 1
+                    want_tag = candidates[0]
+                    is_on_correct_commit = (
+                        repo.pygit.head.commit.hexsha == want_tag.commit.hexsha
+                    )
+                    ref_is_tag = True
+            else:
+                ref_is_tag = False
+                tracking_branch = repo.pygit.active_branch.tracking_branch()
+                is_on_correct_commit = repo.branch != active_branch_name
+
+            if not is_on_correct_commit:
                 repo.debug('NEED TO SET BRANCH TO {} for {}'.format(repo.branch, repo))
                 if dry:
                     repo.info('Dry run, not setting branch')
@@ -595,42 +615,54 @@ class Repo(ub.NiceRepr):
                         except ShellException:
                             raise Exception('does the branch exist on the remote?')
 
-            tracking_branch = repo.pygit.active_branch.tracking_branch()
-            if tracking_branch is None or tracking_branch.remote_name != repo.remote:
-                repo.debug('NEED TO SET UPSTREAM FOR FOR {}'.format(repo))
+            if not ref_is_tag:
+                if tracking_branch is None or tracking_branch.remote_name != repo.remote:
+                    repo.debug('NEED TO SET UPSTREAM FOR FOR {}'.format(repo))
 
-                try:
-                    remote = repo.pygit.remotes[repo.remote]
-                    if not remote.exists():
-                        raise IndexError
-                except IndexError:
-                    repo.debug('WARNING: remote={} does not exist'.format(remote))
-                else:
-                    if remote.exists():
-                        remote_branchnames = [ref.remote_head for ref in remote.refs]
-                        if repo.branch not in remote_branchnames:
-                            if dry:
-                                repo.info('Branch name not found in local remote. Dry run, use ensure to attempt to fetch')
+                    try:
+                        remote = repo.pygit.remotes[repo.remote]
+                        if not remote.exists():
+                            raise IndexError
+                    except IndexError:
+                        repo.debug('WARNING: remote={} does not exist'.format(remote))
+                    else:
+                        if remote.exists():
+                            remote_branchnames = [ref.remote_head for ref in remote.refs]
+                            if repo.branch not in remote_branchnames:
+                                if dry:
+                                    repo.info('Branch name not found in local remote. Dry run, use ensure to attempt to fetch')
+                                else:
+                                    repo.info('Branch name not found in local remote. Attempting to fetch')
+                                    repo._cmd('git fetch {}'.format(repo.remote))
+
+                                    remote_branchnames = [ref.remote_head for ref in remote.refs]
+                                    if repo.branch not in remote_branchnames:
+                                        raise Exception('Branch name still does not exist')
+
+                            if not dry:
+                                repo._cmd('git branch --set-upstream-to={remote}/{branch} {branch}'.format(
+                                    remote=repo.remote, branch=repo.branch
+                                ))
                             else:
-                                repo.info('Branch name not found in local remote. Attempting to fetch')
-                                repo._cmd('git fetch {}'.format(repo.remote))
+                                repo.info('Would attempt to set upstream')
 
-                                remote_branchnames = [ref.remote_head for ref in remote.refs]
-                                if repo.branch not in remote_branchnames:
-                                    raise Exception('Branch name still does not exist')
-
-                        if not dry:
-                            repo._cmd('git branch --set-upstream-to={remote}/{branch} {branch}'.format(
-                                remote=repo.remote, branch=repo.branch
-                            ))
-                        else:
-                            repo.info('Would attempt to set upstream')
+        # Check if the current head is tagged
+        head_tags = [
+            tag for tag in repo.pygit.tags
+            if tag.commit.hexsha == repo.pygit.head.commit.hexsha
+        ]
 
         # Print some status
-        repo.debug(' * branch = {} -> {}'.format(
-            repo.pygit.active_branch.name,
-            repo.pygit.active_branch.tracking_branch(),
-        ))
+        try:
+            repo.debug(' * branch = {} -> {}'.format(
+                repo.pygit.active_branch.name,
+                repo.pygit.active_branch.tracking_branch(),
+            ))
+        except Exception:
+            pass
+
+        if head_tags:
+            repo.debug(' * head_tags = {}'.format(head_tags))
 
     def pull(repo):
         repo._assert_clean()
@@ -776,10 +808,11 @@ DEVEL_REPOS = [
         'name': 'kwimage', 'branch': 'dev/0.6.11', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
-    {
-        'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
-    },
+    # TODO:
+    # {
+    #     'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'public',
+    #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
+    # },
     {
         'name': 'kwcoco', 'branch': 'dev/0.1.10', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
