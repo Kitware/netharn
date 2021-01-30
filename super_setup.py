@@ -379,6 +379,9 @@ class Repo(ub.NiceRepr):
         return repo._pygit
 
     def develop(repo):
+        """
+        Install each repo in development mode.
+        """
         if ub.WIN32:
             # We can't run a shell file on win32, so lets hope this works
             import warnings
@@ -390,6 +393,16 @@ class Repo(ub.NiceRepr):
             # if not exists(devsetup_script_fpath):
             #     raise AssertionError('Assume we always have run_developer_setup.sh: repo={!r}'.format(repo))
             # repo._cmd(devsetup_script_fpath, cwd=repo.dpath)
+
+    @classmethod
+    def demo(Repo, ensure=True):
+        repo = Repo(
+            remote='https://github.com/Erotemic/ubelt.git',
+            code_dpath=ub.ensuredir(ub.expandpath('~/tmp/demo-repos')),
+        )
+        if ensure:
+            repo.ensure()
+        return repo
 
     def doctest(repo):
         if ub.WIN32:
@@ -449,7 +462,17 @@ class Repo(ub.NiceRepr):
             repo.debug('Clone non-existing repo={}'.format(repo))
             repo.clone()
 
-    def update_to_latest_dev_branch(repo, dry=False):
+    def upgrade(repo, dry=False):
+        """
+        Look for a "dev" branch with a higher version number and switch to that.
+
+        Example:
+            >>> from super_setup import *
+            >>> import ubelt as ub
+            >>> repo = Repo.demo()
+            >>> print('repo = {}'.format(repo))
+            >>> repo.upgrade()
+        """
         remote = repo._registered_remote()
         repo._cmd('git fetch {}'.format(remote.name))
         repo.info('Fetch was successful')
@@ -457,13 +480,19 @@ class Repo(ub.NiceRepr):
         print('remote_branchnames = {!r}'.format(remote_branchnames))
 
         # Find all the dev branches
-        dev_branches = [ref for ref in remote.refs
-                        if ref.remote_head.startswith('dev/')]
+        dev_branches_ = [ref for ref in remote.refs
+                         if ref.remote_head.startswith('dev/')]
 
-        version_tuples = [
-            tuple(map(int, ref.remote_head.split('dev/')[1].split('.')))
-            for ref in dev_branches
-        ]
+        dev_branches = []
+        version_tuples = []
+        for ref in dev_branches_:
+            try:
+                tup = tuple(map(int, ref.remote_head.split('dev/')[1].split('.')))
+                dev_branches.append(ref)
+                version_tuples.append(tup)
+            except Exception:
+                pass
+
         latest_ref = dev_branches[ub.argmax(version_tuples)]
         latest_branch = latest_ref.remote_head
 
@@ -967,7 +996,7 @@ def main():
     @cli_group.add_command
     @click.command('upgrade', context_settings=default_context_settings)
     def upgrade():
-        main_repo.update_to_latest_dev_branch()
+        main_repo.upgrade()
 
     cli_group()
 
