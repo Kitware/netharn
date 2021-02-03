@@ -28,13 +28,27 @@ class CustomDataset(Dataset):
             self.data = np.array([x for x in range(int(total))])
         elif storage_mode == 'python':
             self.data = [x for x in range(int(total))]
+        elif storage_mode == 'ndsampler-db':
+            import ndsampler
+            import kwcoco
+            from kwcoco.coco_sql_dataset import ensure_sql_coco_view
+            dset = kwcoco.CocoDataset.demo('vidshapes{}'.format(total))
+            dset = ensure_sql_coco_view(dset)
+            dset.hashid = 'fake'
+            sampler = ndsampler.CocoSampler(dset)
+            self.data = sampler
+            # sampler.load_item(0)
+            # tr = sampler.regions.get_item(0)
+            # sampler.load_sample(tr)
+            # assert total <= 1000
+            # sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
+            # sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
         elif storage_mode == 'ndsampler':
             import ndsampler
-            assert total <= 1000
-            sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
+            assert total <= 10000
+            sampler = ndsampler.CocoSampler.demo('vidshapes{}'.format(total))
 
-            TRY_TWEAKS = 1
-
+            TRY_TWEAKS = 0
             if 1 and TRY_TWEAKS:
                 # Tweaks to try and prevent the sampler from leaking
                 sampler.frames._lru = None
@@ -51,9 +65,7 @@ class CustomDataset(Dataset):
                 dset.index.vidid_to_gids = manager.dict(dset.index.vidid_to_gids)
                 dset.index.file_name_to_img = manager.dict(dset.index.file_name_to_img)
                 dset.index.name_to_cat = manager.dict(dset.index.name_to_cat)
-
                 dset.dataset = manager.dict(dset.dataset)
-
                 # sampler.frames.dset
                 # sampler.dset
                 # sampler.regions.dset
@@ -66,7 +78,7 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        if self.storage_mode == 'ndsampler':
+        if self.storage_mode == 'ndsampler' or self.storage_mode == 'ndsampler-db':
             data = self.data.load_item(idx)['im'].ravel()[0:1].astype(np.float32)
             data_pt = torch.from_numpy(data)
         else:
@@ -252,7 +264,7 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
     print('measured final usage: {}'.format(byte_str(used_bytes)))
     print('measured peak usage:  {}'.format(byte_str(max_bytes)))
 
-    if hasattr(train_data.data, 'frames'):
+    if 0 and hasattr(train_data.data, 'frames'):
         sampler = train_data.data
         print('sampler.regions.__dict__ = {}'.format(
             ub.repr2(sampler.regions.__dict__, nl=1)))
@@ -274,8 +286,11 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True
+        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=True
+
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
+
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=4
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=4
