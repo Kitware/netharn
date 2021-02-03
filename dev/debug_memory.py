@@ -32,10 +32,14 @@ class CustomDataset(Dataset):
             import ndsampler
             import kwcoco
             from kwcoco.coco_sql_dataset import ensure_sql_coco_view
-            dset = kwcoco.CocoDataset.demo('vidshapes{}'.format(total))
+            dset = kwcoco.CocoDataset.demo(
+                'vidshapes', num_videos=1, num_frames=total,
+                gsize=(64, 64)
+            )
             dset = ensure_sql_coco_view(dset)
-            dset.hashid = 'fake'
-            sampler = ndsampler.CocoSampler(dset)
+            print('dset.uri = {!r}'.format(dset.uri))
+            dset.hashid = 'fake-hashid'
+            sampler = ndsampler.CocoSampler(dset, backend=None)
             self.data = sampler
             # sampler.load_item(0)
             # tr = sampler.regions.get_item(0)
@@ -45,31 +49,11 @@ class CustomDataset(Dataset):
             # sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
         elif storage_mode == 'ndsampler':
             import ndsampler
-            assert total <= 10000
-            sampler = ndsampler.CocoSampler.demo('vidshapes{}'.format(total))
-
-            TRY_TWEAKS = 0
-            if 1 and TRY_TWEAKS:
-                # Tweaks to try and prevent the sampler from leaking
-                sampler.frames._lru = None
-
-            if 1 and TRY_TWEAKS:
-                import multiprocessing
-                dset = sampler.dset
-                manager = multiprocessing.Manager()
-                dset.index.cats = manager.dict(dset.index.cats)
-                dset.index.anns = manager.dict(dset.index.anns)
-                dset.index.imgs = manager.dict(dset.index.imgs)
-                dset.index.gid_to_aids = manager.dict(dset.index.gid_to_aids)
-                dset.index.cid_to_aids = manager.dict(dset.index.cid_to_aids)
-                dset.index.vidid_to_gids = manager.dict(dset.index.vidid_to_gids)
-                dset.index.file_name_to_img = manager.dict(dset.index.file_name_to_img)
-                dset.index.name_to_cat = manager.dict(dset.index.name_to_cat)
-                dset.dataset = manager.dict(dset.dataset)
-                # sampler.frames.dset
-                # sampler.dset
-                # sampler.regions.dset
-
+            # assert total <= 10000
+            sampler = ndsampler.CocoSampler.demo(
+                'vidshapes', num_videos=1, num_frames=total,
+                gsize=(64, 64)
+            )
             self.data = sampler
         else:
             raise KeyError(storage_mode)
@@ -77,9 +61,23 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    # def __getstate__(self):
+    #     print('\n\nGETTING CUSTOM DATASET STATE')
+    #     return super().__getstate__()
+
+    # def __setstate__(self, val):
+    #     print('\n\nSETTING CUSTOM DATASET STATE')
+    #     return super().__setstate__(val)
+
     def __getitem__(self, idx):
+        if 0:
+            import multiprocessing
+            print('\n\nidx = {!r}'.format(idx))
+            print('self = {!r}'.format(self))
+            print(multiprocessing.current_process())
         if self.storage_mode == 'ndsampler' or self.storage_mode == 'ndsampler-db':
-            data = self.data.load_item(idx)['im'].ravel()[0:1].astype(np.float32)
+            sample = self.data.load_item(idx)
+            data = sample['im'].ravel()[0:1].astype(np.float32)
             data_pt = torch.from_numpy(data)
         else:
             data = self.data[idx]
@@ -192,6 +190,17 @@ def byte_str(num, unit='auto', precision=2):
     return ub.repr2(num_unit, precision=precision) + ' ' + unit
 
 
+def worker_init_fn(worker_id):
+    worker_info = torch.utils.data.get_worker_info()
+    dataset = worker_info.dataset
+    print('WORKER INIT FOR dataset')
+    if hasattr(dataset.data, 'dset'):
+        dset = dataset.data.dset
+        if hasattr(dset, 'connect'):
+            dset.connect(readonly=True)
+        print('WORKER INIT FOR dset = {!r}'.format(dset))
+
+
 def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, workers=2):
     """
     Args:
@@ -202,6 +211,11 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
         total : size of backend storage
 
     """
+
+    if 0:
+        # torch_multiprocessing.get_context()
+        torch.multiprocessing.set_start_method('spawn')
+
     mem = psutil.virtual_memory()
     start_mem = mem.used
     mem_str = byte_str(start_mem)
@@ -226,11 +240,12 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
     print('shuffle = {!r}'.format(shuffle))
 
     num_workers = workers
-    train_loader = DataLoader(train_data, batch_size=300,
-                              shuffle=shuffle,
-                              drop_last=True,
-                              pin_memory=False,
-                              num_workers=num_workers)
+    batch_size = 32
+    # batch_size = 300
+    train_loader = DataLoader(train_data, batch_size=batch_size,
+                              shuffle=shuffle, drop_last=True,
+                              pin_memory=False, num_workers=num_workers,
+                              worker_init_fn=worker_init_fn)
 
     used_nbytes = psutil.virtual_memory().used - start_mem
     print('After init DataLoader memory = {!r}'.format(byte_str(used_nbytes)))
@@ -275,6 +290,7 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
 
 if __name__ == '__main__':
     """
+
     CommandLine:
         python debug_memory.py numpy tensor --total=24e5 --shuffle=True
 
@@ -285,8 +301,19 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=True
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False
 
-        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True
-        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=True
+        python debug_memory.py --storage_mode=ndsampler --total=100000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-db --total=100000 --shuffle=True --workers=4
+
+        python debug_memory.py --storage_mode=ndsampler --total=10000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-db --total=10000 --shuffle=True --workers=4
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0 --profile
+        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=True --workers=0 --profile
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=8
+        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=False --workers=8
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0

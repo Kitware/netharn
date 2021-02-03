@@ -836,6 +836,15 @@ def configure_hacks(config={}, **kw):
             raise KeyError('start={} is not in valid_strats={}'.format(strat, valid_strats))
         torch.multiprocessing.set_sharing_strategy(strat)
 
+    if 0:
+        """
+        References:
+            https://britishgeologicalsurvey.github.io/science/python-forking-vs-spawn/
+        """
+        import torch
+        # torch_multiprocessing.get_context()
+        torch.multiprocessing.set_start_method('spawn')
+
 
 def configure_workdir(config={}, **kw):
     config = _update_defaults(config, kw)
