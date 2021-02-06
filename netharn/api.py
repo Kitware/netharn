@@ -37,7 +37,6 @@ class Datasets(object):
             >>> print(ub.repr2(nh.api.Datasets.coerce(config, **kw)))
         """
         from ndsampler import coerce_data
-
         config = _update_defaults(config, kw)
         torch_datasets = coerce_data.coerce_datasets(config)
         return torch_datasets
