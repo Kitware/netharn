@@ -600,7 +600,11 @@ class Repo(ub.NiceRepr):
 
             # Ensure the remote points to the right place
             if repo.url not in list(remote.urls):
-                repo.debug('WARNING: The requested url={} disagrees with remote urls={}'.format(repo.url, list(remote.urls)))
+                repo.debug(ub.paragraph(
+                    '''
+                    'WARNING: The requested url={} disagrees with remote
+                    urls={}
+                    ''').format(repo.url, list(remote.urls)))
 
                 if dry:
                     repo.info('Dry run, not updating remote url')
@@ -627,7 +631,7 @@ class Repo(ub.NiceRepr):
             else:
                 ref_is_tag = False
                 tracking_branch = repo.pygit.active_branch.tracking_branch()
-                is_on_correct_commit = repo.branch != active_branch_name
+                is_on_correct_commit = repo.branch == active_branch_name
 
             if not is_on_correct_commit:
                 repo.debug('NEED TO SET BRANCH TO {} for {}'.format(repo.branch, repo))
@@ -914,7 +918,6 @@ def main():
         if repo.name == MAIN_REPO_NAME:
             main_repo = repo
             break
-    assert main_repo is not None
 
     HACK_PROTOCOL = True
     if HACK_PROTOCOL:
@@ -996,6 +999,7 @@ def main():
     @cli_group.add_command
     @click.command('upgrade', context_settings=default_context_settings)
     def upgrade():
+        assert main_repo is not None
         main_repo.upgrade()
 
     cli_group()
