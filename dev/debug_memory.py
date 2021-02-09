@@ -8,6 +8,43 @@ References:
 Potential Solutions:
     https://stackoverflow.com/questions/6832554/multiprocessing-how-do-i-share-a-dict-among-multiple-processes
 
+
+Notes:
+    The issue does not stem from any quirk in the multiprocessing library. It
+    is a fundamental consequence of Python reference counting and the
+    operating-system level fork operation. When the OS forks the base Python
+    process it creates a new nearly identical process (Python variables even
+    have the same id). This new process is very lightweight because it does not
+    copy over all the memory from the original program. Instead, it will only
+    copy bits of memory as they are changed, i.e. diverge from the base
+    process. This is the copy-on-write behavior. When an item of a Python list
+    is accessed by the forked process, it must increment the reference count of
+    whatever it accessed, and thus the OS perceives a write and triggers the
+    copy on write. But the OS doesn't just copy the small bit of memory that
+    was touched. It copies the entire memory page that the reference count for
+    the variable existed on. That's why the problem is so much worse when you
+    do random access (in sequential access the memory page that is copied
+    likely has the next reference count you were going to increment anyway, but
+    in random access discontiguous blocks of memory are copied,... well...
+    randomly). The one part I don't have a firm grasp on is why the problem
+    doesn't plateau as you start to randomly access information in pages you
+    already copied.  Perhaps the information is stale somehow? I'm not sure.
+    But that is my best understanding of the issue.
+
+    Using a pointer to a database like SQLite completely side-steps this
+    problem, because the only information that is forked is a string that
+    points to the database URI. New connections are opened up in each of the
+    forked processes. The only issue I've had is accessing a row is now O(N
+    log(N)) instead of O(1). This can be mitigated with memoized caching, which
+    again for a reason I don't entirely understand, uses less memory than
+    fork's copy-on-write behavior. However, I see speed benefits of SQL when I
+    scale from 10,000 to 100,000 images. The SQL+memoized cache backend was
+    running consistently at 45Hz as I scaled up (theoretically there should be
+    a logarithmic slowdown, but it appears to be small enough effect that I
+    didn't see it), whereas the in-memory json data structure starts at over
+    100Hz, but slows down to 1.1Hz at scale (which theoretically should have
+    been constant at scale, but that copy-on-write appears to add a lot of
+    overhead).
 """
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
@@ -28,7 +65,7 @@ class CustomDataset(Dataset):
             self.data = np.array([x for x in range(int(total))])
         elif storage_mode == 'python':
             self.data = [x for x in range(int(total))]
-        elif storage_mode == 'ndsampler-db':
+        elif storage_mode == 'ndsampler-sql':
             import ndsampler
             import kwcoco
             from kwcoco.coco_sql_dataset import ensure_sql_coco_view
@@ -75,7 +112,7 @@ class CustomDataset(Dataset):
             print('\n\nidx = {!r}'.format(idx))
             print('self = {!r}'.format(self))
             print(multiprocessing.current_process())
-        if self.storage_mode == 'ndsampler' or self.storage_mode == 'ndsampler-db':
+        if self.storage_mode == 'ndsampler' or self.storage_mode == 'ndsampler-sql':
             sample = self.data.load_item(idx)
             data = sample['im'].ravel()[0:1].astype(np.float32)
             data_pt = torch.from_numpy(data)
@@ -302,18 +339,18 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False
 
         python debug_memory.py --storage_mode=ndsampler --total=100000 --shuffle=True --workers=4
-        python debug_memory.py --storage_mode=ndsampler-db --total=100000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-sql --total=100000 --shuffle=True --workers=4
 
         python debug_memory.py --storage_mode=ndsampler --total=10000 --shuffle=True --workers=4
-        python debug_memory.py --storage_mode=ndsampler-db --total=10000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-sql --total=10000 --shuffle=True --workers=4
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0 --profile
-        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=True --workers=0 --profile
+        python debug_memory.py --storage_mode=ndsampler-sql --total=1000 --shuffle=True --workers=0 --profile
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=8
-        python debug_memory.py --storage_mode=ndsampler-db --total=1000 --shuffle=False --workers=8
+        python debug_memory.py --storage_mode=ndsampler-sql --total=1000 --shuffle=False --workers=8
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
