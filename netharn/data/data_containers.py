@@ -112,7 +112,7 @@ class BatchContainer(ub.NiceRepr):
             shape_repr = ub.repr2(self.nestshape, nl=-2)
             return 'nestshape(data)={}'.format(shape_repr)
         except Exception:
-            return super().__repr__()
+            return object.__repr__(self)
 
     def __getitem__(self, index):
         cls = self.__class__
@@ -914,6 +914,32 @@ def nestshape(data):
         >>> data = [np.arange(10), np.arange(13)]
         >>> nestshape(data)
         [(10,), (13,)]
+
+    Ignore:
+        >>> # xdoctest: +REQUIRES(module:mmdet)
+        >>> from netharn.data.data_containers import *  # NOQA
+
+        >>> from mmdet.core.mask.structures import *  # NOQA
+        >>> masks = [
+        >>>     [ np.array([0, 0, 10, 0, 10, 10., 0, 10, 0, 0]) ],
+        >>>     [ np.array([0, 0, 10, 0, 10, 10., 0, 10, 5., 5., 0, 0]) ]
+        >>> ]
+        >>> height, width = 16, 16
+        >>> polys = PolygonMasks(masks, height, width)
+        >>> nestshape(polys)
+
+        >>> dc = BatchContainer([polys], stack=False)
+        >>> print('dc = {}'.format(ub.repr2(dc, nl=1)))
+
+        >>> num_masks, H, W = 3, 32, 32
+        >>> rng = np.random.RandomState(0)
+        >>> masks = (rng.rand(num_masks, H, W) > 0.1).astype(np.int)
+        >>> bitmasks = BitmapMasks(masks, height=H, width=W)
+        >>> nestshape(bitmasks)
+
+        >>> dc = BatchContainer([bitmasks], stack=False)
+        >>> print('dc = {}'.format(ub.repr2(dc, nl=1)))
+
     """
     import ubelt as ub
 
@@ -922,7 +948,9 @@ def nestshape(data):
         import numpy as np
         if isinstance(d, dict):
             return ub.odict(sorted([(k, _recurse(v)) for k, v in d.items()]))
-        elif 'Container' in type(d).__name__:
+
+        clsname = type(d).__name__
+        if 'Container' in clsname:
             meta = ub.odict(sorted([
                 ('stack', d.stack),
                 # ('padding_value', d.padding_value),
@@ -946,6 +974,12 @@ def nestshape(data):
             return d
         elif isinstance(d, slice):
             return d
+        elif 'PolygonMasks' == clsname:
+            # hack for mmdet
+            return repr(d)
+        elif 'BitmapMasks' == clsname:
+            # hack for mmdet
+            return repr(d)
         else:
             raise TypeError(type(d))
 
