@@ -31,6 +31,7 @@ yourself.
         --train_dataset=./toydata_train.json \
         --vali_dataset=./toydata_vali.json \
         --test_dataset=./toydata_test.json \
+        --workdir=$HOME/work/netharn \
         --input_dims=224,244 \
         --batch_size=32 \
         --max_epoch=100 \
@@ -39,6 +40,31 @@ yourself.
         --schedule=ReduceLROnPlateau-p10-c10 \
         --augmenter=medium \
         --lr=1e-3
+
+
+Equivalently you could call this via python
+
+.. code-block:: python
+
+    from netharn.examples.classification import setup_harn
+
+    kwargs = {
+        'name': 'My Classification Example',
+        'train_dataset': './toydata_train.json',
+        'vali_dataset': './toydata_vali.json',
+        'workdir': '$HOME/work/netharn',
+        'input_dims': (224, 244),
+        'batch_size': 32,
+        'max_epoch': 100,
+        'patience': 40,
+        'xpu': 'auto',
+        'schedule': 'ReduceLROnPlateau-p10-c10',
+        'augmenter': 'medium',
+        'lr': 1e-3,
+    }
+
+    harn = setup_harn(**kwargs)
+    harn.run()
 
 # TODO: describe what the output of this should look like.
 
