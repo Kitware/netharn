@@ -330,7 +330,8 @@ def _devcheck_remove_dead_runs(workdir, dry=True, dead_num_snap_thresh=10,
 
     all_info = [s.info for s in all_sessions]
 
-    nice_groups = ub.group_items(all_info, lambda x: x['name'])
+    nice_groups = ub.group_items(all_info, lambda x: x.get('name', x.get('nice', None)))
+    nice_groups.pop(None, None)
     for name, group in nice_groups.items():
         print(' --- {} --- '.format(name))
         group = sorted(group, key=lambda x: x['size'])
