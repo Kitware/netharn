@@ -513,9 +513,11 @@ class Repo(ub.NiceRepr):
         try:
             remote = repo.pygit.remotes[repo.remote]
         except IndexError:
-            if not dry:
-                raise AssertionError('Something went wrong')
-            else:
+            repo._ensure_remotes(dry=dry)
+            try:
+                remote = repo.pygit.remotes[repo.remote]
+            except IndexError:
+                repo.debug('Something went wrong, cannot find remote in git')
                 remote = None
 
         if remote is not None:
@@ -530,6 +532,32 @@ class Repo(ub.NiceRepr):
                 if not remote.exists():
                     repo.debug('Requested remote does NOT exist')
         return remote
+
+    def _ensure_remotes(repo, dry=True):
+        """
+        Ensures the the registred remotes exists in the git repo.
+        """
+        for remote_name, remote_url in repo.remotes.items():
+            try:
+                remote = repo.pygit.remotes[remote_name]
+                have_urls = list(remote.urls)
+                if remote_url not in have_urls:
+                    # TODO supress this warning if its just a git vs https
+                    # thing using GitURL
+                    print('WARNING: REMOTE NAME EXISTS BUT URL IS NOT {}. '
+                          'INSTEAD GOT: {}'.format(remote_url, have_urls))
+            except (IndexError):
+                try:
+                    print('NEED TO ADD REMOTE {}->{} FOR {}'.format(
+                        remote_name, remote_url, repo))
+                    if not dry:
+                        repo._cmd('git remote add {} {}'.format(remote_name, remote_url))
+                    else:
+                        raise AssertionError('In dry mode, cannot ensure remotes')
+                except ShellException:
+                    if remote_name == repo.remote:
+                        # Only error if the main remote is not available
+                        raise
 
     def ensure(repo, dry=False):
         """
@@ -551,27 +579,6 @@ class Repo(ub.NiceRepr):
         repo.ensure_clone()
 
         repo._assert_clean()
-
-        # Ensure all registered remotes exist
-        for remote_name, remote_url in repo.remotes.items():
-            try:
-                remote = repo.pygit.remotes[remote_name]
-                have_urls = list(remote.urls)
-                if remote_url not in have_urls:
-                    # TODO supress this warning if its just a git vs https
-                    # thing using GitURL
-                    print('WARNING: REMOTE NAME EXISTS BUT URL IS NOT {}. '
-                          'INSTEAD GOT: {}'.format(remote_url, have_urls))
-            except (IndexError):
-                try:
-                    print('NEED TO ADD REMOTE {}->{} FOR {}'.format(
-                        remote_name, remote_url, repo))
-                    if not dry:
-                        repo._cmd('git remote add {} {}'.format(remote_name, remote_url))
-                except ShellException:
-                    if remote_name == repo.remote:
-                        # Only error if the main remote is not available
-                        raise
 
         # Ensure we have the right remote
         remote = repo._registered_remote(dry=dry)
@@ -1011,11 +1018,12 @@ docker run -v $PWD:/io --rm -it $DOCKER_IMAGE bash
 
 mkdir -p $HOME/code
 cd $HOME/code
-git clone -b dev/0.5.5 https://gitlab.kitware.com/computer-vision/netharn.git
+git clone https://gitlab.kitware.com/computer-vision/netharn.git
 cd $HOME/code/netharn
 
 pip install -r requirements/super_setup.txt
 python super_setup.py ensure --serial
+python super_setup.py upgrade --serial
 
 """
 

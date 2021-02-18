@@ -631,6 +631,8 @@ if __name__ == '__main__':
 
         python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
         python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=~/work/voc_yolo2/
+
+        python -m netharn.cli.manage_runs --mode=summarize --workdir=.
         python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=. -f
         python -m netharn.cli.manage_runs --mode=clean_runs --workdir=.
         python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=. --recent 2 --factor 40 -f
