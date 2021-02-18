@@ -382,6 +382,13 @@ class Repo(ub.NiceRepr):
         """
         Install each repo in development mode.
         """
+        # NOTE: We need ensure build requirements are satisfied!
+        build_req_fpath = join(repo.dpath, 'requirements/build.txt')
+        if exists(build_req_fpath):
+            repo._cmd('pip install -r {}'.format(build_req_fpath), cwd=repo.dpath)
+
+        repo._cmd('pip install -e .', cwd=repo.dpath)
+
         if ub.WIN32:
             # We can't run a shell file on win32, so lets hope this works
             import warnings
@@ -1016,14 +1023,24 @@ _DOCKER_DEBUGGING = """
 DOCKER_IMAGE=circleci/python
 docker run -v $PWD:/io --rm -it $DOCKER_IMAGE bash
 
+
+# Fix permissions
+sudo chmod -R u+w /usr/local/lib/python3.8/site-packages/
+sudo chmod -R o+w /usr/local/lib/python3.8/site-packages/
+sudo chmod -R o+w /usr/local/bin
+sudo chmod -R u+w /usr/local/bin
+sudo chmod -R o+w /usr/local/lib/python3.8
+sudo chmod -R u+w /usr/local/lib/python3.8
+
 mkdir -p $HOME/code
 cd $HOME/code
 git clone https://gitlab.kitware.com/computer-vision/netharn.git
 cd $HOME/code/netharn
 
 pip install -r requirements/super_setup.txt
-python super_setup.py ensure --serial
 python super_setup.py upgrade --serial
+python super_setup.py ensure --serial
+python super_setup.py develop --serial
 
 """
 
