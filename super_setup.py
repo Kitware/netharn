@@ -387,8 +387,6 @@ class Repo(ub.NiceRepr):
         if exists(build_req_fpath):
             repo._cmd('pip install -r {}'.format(build_req_fpath), cwd=repo.dpath)
 
-        repo._cmd('pip install -e .', cwd=repo.dpath)
-
         if ub.WIN32:
             # We can't run a shell file on win32, so lets hope this works
             import warnings
@@ -852,7 +850,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.0', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.1', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -861,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.1.11', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.1.13', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
@@ -1023,15 +1021,6 @@ _DOCKER_DEBUGGING = """
 DOCKER_IMAGE=circleci/python
 docker run -v $PWD:/io --rm -it $DOCKER_IMAGE bash
 
-
-# Fix permissions
-sudo chmod -R u+w /usr/local/lib/python3.8/site-packages/
-sudo chmod -R o+w /usr/local/lib/python3.8/site-packages/
-sudo chmod -R o+w /usr/local/bin
-sudo chmod -R u+w /usr/local/bin
-sudo chmod -R o+w /usr/local/lib/python3.8
-sudo chmod -R u+w /usr/local/lib/python3.8
-
 mkdir -p $HOME/code
 cd $HOME/code
 git clone https://gitlab.kitware.com/computer-vision/netharn.git
@@ -1040,7 +1029,9 @@ cd $HOME/code/netharn
 pip install -r requirements/super_setup.txt
 python super_setup.py upgrade --serial
 python super_setup.py ensure --serial
-python super_setup.py develop --serial
+
+# Seems like sudo is necessary for permission issues in docker
+sudo python super_setup.py develop --serial
 
 """
 
