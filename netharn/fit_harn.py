@@ -444,6 +444,34 @@ class InitializeMixin(object):
         else:
             harn.warn('harn.train_dpath is None, all computation is in memory')
 
+        if isinstance(harn.preferences['timeout'], str):
+            import datetime
+            import parse
+            text = harn.preferences['timeout']
+
+            def parse_timedelta_text(text):
+                candidate_formats = [
+                    '{microseconds:d}us',
+                    '{milliseconds}ms',
+                    '{minutes}m',
+                    '{seconds}s',
+                    '{hours:d}h',
+                    '{days:d}d',
+                    '{weeks:d}w',
+                ]
+                text_ = text.lower()
+                for fmt in candidate_formats:
+                    result = parse.parse(fmt, text_)
+                    if result is not None:
+                        delta = datetime.timedelta(**result.named)
+                        break
+                if delta is None:
+                    raise Exception('Unknown time format {}'.format(text))
+                return delta
+
+            delta = parse_timedelta_text(text)
+            harn.preferences['timeout'] = delta.total_seconds()
+
         harn._initialized = True
         harn.after_initialize()
         return harn
