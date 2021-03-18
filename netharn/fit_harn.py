@@ -470,6 +470,7 @@ class InitializeMixin(object):
                 return delta
 
             delta = parse_timedelta_text(text)
+            print('delta = {!r}'.format(delta))
             harn.preferences['timeout'] = delta.total_seconds()
 
         harn._initialized = True
