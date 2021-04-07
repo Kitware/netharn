@@ -859,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.1.13', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.2.0', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
@@ -883,7 +883,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.5.14', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.6.0', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 

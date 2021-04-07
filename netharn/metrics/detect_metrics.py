@@ -57,13 +57,13 @@ class DetectionMetrics(ub.NiceRepr):
         predictions.
 
         Args:
-            true_coco (ndsampler.CocoDataset):
-            pred_coco (ndsampler.CocoDataset):
+            true_coco (kwcoco.CocoDataset):
+            pred_coco (kwcoco.CocoDataset):
 
         Example:
             >>> # xdoctest: +REQUIRES(module:ndsampler)
-            >>> import ndsampler
-            >>> true_coco = ndsampler.CocoDataset.demo('shapes')
+            >>> import kwcoco
+            >>> true_coco = kwcoco.CocoDataset.demo('shapes')
             >>> pred_coco = true_coco
             >>> self = DetectionMetrics.from_coco(true_coco, pred_coco)
             >>> self.score_voc()
@@ -480,9 +480,9 @@ class DetectionMetrics(ub.NiceRepr):
         """
         Convert to a coco representation of truth and predictions
         """
-        import ndsampler
-        true = ndsampler.CocoDataset()
-        pred = ndsampler.CocoDataset()
+        import kwcoco
+        true = kwcoco.CocoDataset()
+        pred = kwcoco.CocoDataset()
 
         for node in dmet.classes:
             # cid = dmet.classes.graph.node[node]['id']
@@ -875,7 +875,7 @@ def eval_detections_cli(**kw):
         xdoctest -m ~/code/netharn/netharn/metrics/detect_metrics.py eval_detections_cli
     """
     import scriptconfig as scfg
-    import ndsampler
+    import kwcoco
 
     class EvalDetectionCLI(scfg.Config):
         default = {
@@ -889,8 +889,8 @@ def eval_detections_cli(**kw):
     cmdline = kw.pop('cmdline', True)
     config.load(kw, cmdline=cmdline)
 
-    true_coco = ndsampler.CocoDataset(config['true'])
-    pred_coco = ndsampler.CocoDataset(config['pred'])
+    true_coco = kwcoco.CocoDataset(config['true'])
+    pred_coco = kwcoco.CocoDataset(config['pred'])
 
     from netharn.metrics.detect_metrics import DetectionMetrics
     dmet = DetectionMetrics.from_coco(true_coco, pred_coco)
