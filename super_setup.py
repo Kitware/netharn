@@ -850,7 +850,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.2', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.3', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -863,7 +863,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.8', 'remote': 'public',
+        'name': 'kwplot', 'branch': 'dev/0.4.9', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
