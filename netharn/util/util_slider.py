@@ -56,10 +56,10 @@ class SlidingWindow(ub.NiceRepr):
         slide over that basis.
 
     Example:
-        >>> import netharn as nh
+        >>> from netharn.util.util_slider import *  # NOQA
         >>> shape = (10, 10)
         >>> window = (5, 5)
-        >>> self = nh.util.SlidingWindow(shape, window)
+        >>> self = SlidingWindow(shape, window)
         >>> for i, index in enumerate(self):
         >>>     print('i={}, index={}'.format(i, index))
         i=0, index=(slice(0, 5, None), slice(0, 5, None))
@@ -68,6 +68,7 @@ class SlidingWindow(ub.NiceRepr):
         i=3, index=(slice(5, 10, None), slice(5, 10, None))
 
     Example:
+        >>> from netharn.util.util_slider import *  # NOQA
         >>> shape = (16, 16)
         >>> window = (4, 4)
         >>> self = SlidingWindow(shape, window, overlap=(.5, .25))
@@ -84,8 +85,6 @@ class SlidingWindow(ub.NiceRepr):
     """
     def __init__(self, shape, window, overlap=None, stride=None,
                  keepbound=False, allow_overshoot=False):
-        import netharn as nh
-
         if overlap is None and stride is None:
             overlap = 0
 
@@ -136,7 +135,7 @@ class SlidingWindow(ub.NiceRepr):
 
         # NOTE: if we have overshot, then basis shape will not perfectly
         # align to the original image. This shape will be a bit bigger.
-        self.basis_slices = [list(nh.util.wide_strides_1d(**kw))
+        self.basis_slices = [list(_wide_strides_1d(**kw))
                                for kw in stide_kw]
         self.basis_shape = [len(b) for b in self.basis_slices]
         self.n_total = np.prod(self.basis_shape)
@@ -196,10 +195,9 @@ class SlidingWindow(ub.NiceRepr):
         Get a specific item by its flat (raveled) index
 
         Example:
-            >>> import netharn as nh
-            >>> shape = (220, 220)
+            >>> from netharn.util.util_slider import *  # NOQA
             >>> window = (10, 10)
-            >>> self = nh.util.SlidingWindow(shape, window, stride=5)
+            >>> self = SlidingWindow(shape, window, stride=5)
             >>> itered_items = list(self)
             >>> assert len(itered_items) == len(self)
             >>> indexed_items = [self[i] for i in range(len(self))]
@@ -374,7 +372,7 @@ class Stitcher(ub.NiceRepr):
 
         Example:
             >>> import sys
-            >>> import netharn as nh
+            >>> from netharn.util.util_slider import *  # NOQA
             >>> # Build a high resolution image and slice it into chips
             >>> frames = np.random.rand(1, 200, 100, 100).astype(np.float32)
             >>> window = (frames.shape[0], 15, 15, 15)
@@ -561,6 +559,84 @@ class Stitcher(ub.NiceRepr):
 
         final = np.nan_to_num(final)
         return final
+
+
+def _wide_strides_1d(margin, stop, step=None, start=0, keepbound=False,
+                     check=True):
+    """
+    Helper to generates slices in a single dimension.
+
+    Args:
+        start (int): starting point (in most cases set this to 0)
+
+        margin (int): the length of the slice (window)
+
+        stop (int): the length of the image dimension
+
+        step (int): the length of each step / distance between slices
+
+        keepbound (bool): if True, a non-uniform step will be taken to ensure
+            that the right / bottom of the image is returned as a slice if
+            needed. Such a slice will not obey the overlap constraints.
+            (Defaults to False)
+
+        check (bool): if True an error will be raised if the window does not
+            cover the entire extent from start to stop, even if keepbound is
+            True.
+
+    Yields:
+        slice : slice in one dimension of size (margin)
+
+    Example:
+        >>> stop, margin, step = 2000, 360, 360
+        >>> keepbound = True
+        >>> strides = list(_wide_strides_1d(margin, stop, step, keepbound, check=False))
+        >>> assert all([(s.stop - s.start) == margin for s in strides])
+
+    Example:
+        >>> stop, margin, step = 200, 46, 7
+        >>> keepbound = True
+        >>> strides = list(_wide_strides_1d(margin, stop, step, keepbound=False, check=True))
+        >>> starts = np.array([s.start for s in strides])
+        >>> stops = np.array([s.stop for s in strides])
+        >>> widths = stops - starts
+        >>> assert np.all(np.diff(starts) == step)
+        >>> assert np.all(widths == margin)
+
+    Example:
+        >>> import pytest
+        >>> stop, margin, step = 200, 36, 7
+        >>> with pytest.raises(ValueError):
+        ...     list(_wide_strides_1d(margin, stop, step))
+    """
+    if step is None:
+        step = margin
+
+    if check:
+        # see how far off the end we would fall if we didnt check bounds
+        perfect_final_pos = (stop - start - margin)
+        overshoot = perfect_final_pos % step
+        if overshoot > 0:
+            raise ValueError(
+                ('margin={} and step={} overshoot endpoint={} '
+                 'by {} units when starting from={}').format(
+                     margin, step, stop, overshoot, start))
+    pos = start
+    # probably could be more efficient with numpy here
+    while True:
+        endpos = pos + margin
+        yield slice(pos, endpos)
+        # Stop once we reached the end
+        if endpos == stop:
+            break
+        pos += step
+        if pos + margin > stop:
+            if keepbound:
+                # Ensure the boundary is always used even if steps
+                # would overshoot Could do some other strategy here
+                pos = stop - margin
+            else:
+                break
 
 
 from .util_slider_dep import SlidingIndexDataset, SlidingSlices  # NOQA
