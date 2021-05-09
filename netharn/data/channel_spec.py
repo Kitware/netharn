@@ -1,3 +1,6 @@
+"""
+Deprecated. Ported to kwcoco
+"""
 import ubelt as ub
 import six
 import functools
