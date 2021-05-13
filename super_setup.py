@@ -846,11 +846,11 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.19', 'remote': 'public',
+        'name': 'kwarray', 'branch': 'dev/0.5.20', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.4', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.5', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -859,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.3', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.2.4', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
@@ -883,7 +883,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.6.1', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.6.2', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
