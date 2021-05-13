@@ -846,11 +846,11 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.17', 'remote': 'public',
+        'name': 'kwarray', 'branch': 'dev/0.5.19', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.3', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.4', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -859,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.2', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.2.3', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
@@ -873,7 +873,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:python/liberator.git'},
     },
     {
-        'name': 'torch_liberator', 'branch': 'dev/0.0.5', 'remote': 'public',
+        'name': 'torch_liberator', 'branch': 'dev/0.1.1', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/torch_liberator.git'},
     },
 

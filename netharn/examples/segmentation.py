@@ -19,7 +19,7 @@ class SegmentationConfig(scfg.Config):
     Default configuration for setting up a training session
     """
     default = {
-        'nice': scfg.Value('untitled', help='A human readable tag that is "nice" for humans'),
+        'name': scfg.Value('untitled', help='A human readable tag that is "nice" for humans'),
         'workdir': scfg.Path('~/work/sseg', help='Dump all results in your workdir'),
 
         'workers': scfg.Value(0, help='number of parallel dataloading jobs'),
@@ -713,7 +713,7 @@ def setup_harn(cmdline=True, **kw):
 
     # Create hyperparameters
     hyper = nh.HyperParams(
-        nice=config['nice'],
+        nice=config['name'],
         workdir=config['workdir'],
         xpu=nh.XPU.coerce(config['xpu']),
 
@@ -771,14 +771,27 @@ def main():
 
 
 if __name__ == '__main__':
-    """
+    r"""
     CommandLine:
 
         conda install gdal
 
+        # Use the kwcoco-coercable toydata dataset names
         python -m netharn.examples.segmentation \
-                --nice=shapes_demo --datasets=shapes32 \
+                --name=shapes_demo --datasets=shapes32 \
                 --workers=0 --xpu=cpu
+
+        # Or write the toy data explicitly using the kwcoco CLI
+        kwcoco toydata --key shapes32 --dst toy_train.kwcoco.json
+        kwcoco toydata --key shapes8 --dst toy_vali.kwcoco.json
+
+        # Run on the explicit kwcoco files
+        python -m netharn.examples.segmentation \
+            --name=shapes_segmentation_demo \
+            --train_dataset=./toy_train.kwcoco.json \
+            --vali_dataset=./toy_vali.kwcoco.json \
+            --workers=0 --xpu=cpu
+
 
         # You can use MS-COCO files to learn to segment your own data To
         # demonstrate grab the CamVid dataset (the following script also
@@ -786,18 +799,23 @@ if __name__ == '__main__':
 
         python -m netharn.data.grab_camvid  # Download MS-COCO files
 
-        python -m netharn.examples.segmentation --workers=4 --xpu=0 --nice=camvid_deeplab \
+        python -m netharn.examples.segmentation --workers=4 --xpu=cpu --name=camvid_deeplab \
             --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --schedule=step-90-120 --arch=deeplab --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
 
-        python -m netharn.examples.segmentation --workers=4 --xpu=auto --nice=camvid_psp_wip \
+        python -m netharn.examples.segmentation --workers=4 --xpu=0 --name=camvid_deeplab \
+            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+            --schedule=step-90-120 --arch=deeplab --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
+
+        python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip \
             --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --schedule=step-90-120 --arch=psp --batch_size=6 --lr=1e-3 --input_dims=512,512 --optim=sgd --bstep=1
 
         # Note you would need to change the path to a pretrained network
-        python -m netharn.examples.segmentation --workers=4 --xpu=auto --nice=camvid_psp_wip_fine \
+        python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip_fine \
             --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
             --pretrained=$HOME/work/sseg/fit/runs/camvid_psp_wip/fowjplca/deploy_SegmentationModel_fowjplca_134_CZARGB.zip \
