@@ -406,6 +406,7 @@ class SegmentationHarn(nh.FitHarn):
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
         """
+        import cv2
         im = batch['im'].data.cpu().numpy()
         class_true = batch['class_idxs'].data.cpu().numpy()
         class_pred = outputs['class_probs'].data.cpu().numpy().argmax(axis=1)
@@ -413,10 +414,8 @@ class SegmentationHarn(nh.FitHarn):
         batch_imgs = []
 
         for bx in range(min(len(class_true), lim)):
-
             orig_img = im[bx].transpose(1, 2, 0)
 
-            import cv2
             out_size = class_pred[bx].shape[::-1]
 
             orig_img = cv2.resize(orig_img, tuple(map(int, out_size)))
