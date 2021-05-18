@@ -228,7 +228,8 @@ class ItemContainer(ub.NiceRepr):
             shape_repr = ub.repr2(self.nestshape, nl=-2)
             return 'nestshape(data)={}'.format(shape_repr)
         except Exception:
-            return super().__repr__()
+            return object.__repr__(self)
+            # return super().__repr__()
 
     @classmethod
     def demo(cls, key='img', rng=None, **kwargs):
@@ -397,6 +398,38 @@ class ItemContainer(ub.NiceRepr):
                     [sample.data for sample in inbatch[i:i + samples_per_device]])
         result = BatchContainer(stacked, **item0.meta)
         return result
+
+
+def decollate_batch(batch):
+    """
+    Breakup a collated batch of BatchContainers back into ItemContainers
+
+    Example:
+        >>> bsize = 5
+        >>> batch_items = [
+        >>>     {
+        >>>         'im': ItemContainer.demo('img'),
+        >>>         'label': ItemContainer.demo('labels'),
+        >>>         'box': ItemContainer.demo('box'),
+        >>>     }
+        >>>     for _ in range(bsize)
+        >>> ]
+        >>> batch = container_collate(batch_items, num_devices=2)
+        >>> decollated = decollate_batch(batch)
+        >>> assert len(decollated) == len(batch_items)
+        >>> assert (decollated[0]['im'].data == batch_items[0]['im'].data).all()
+    """
+    import ubelt as ub
+    from kwcoco.util.util_json import IndexableWalker
+    walker = IndexableWalker(batch)
+    decollated_dict = ub.AutoDict()
+    decollated_walker = IndexableWalker(decollated_dict)
+    for path, batch_val in walker:
+        if isinstance(batch_val, BatchContainer):
+            for bx, item_val in enumerate(ub.flatten(batch_val.data)):
+                decollated_walker[[bx] + path] = ItemContainer(item_val)
+    decollated = list(decollated_dict.to_dict().values())
+    return decollated
 
 
 def container_collate(inbatch, num_devices=None):
@@ -980,6 +1013,11 @@ def nestshape(data):
         elif 'BitmapMasks' == clsname:
             # hack for mmdet
             return repr(d)
+        elif hasattr(d, 'shape'):
+            return d.shape
+        elif hasattr(d, 'items'):
+            # hack for dict-like objects
+            return ub.odict(sorted([(k, _recurse(v)) for k, v in d.items()]))
         else:
             raise TypeError(type(d))
 
