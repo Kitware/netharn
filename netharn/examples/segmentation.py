@@ -75,11 +75,12 @@ class SegmentationDataset(torch.utils.data.Dataset):
         >>> # DISABLE_DOCTEST
         >>> #input_dims = (224, 224)
         >>> # xdoctest: +REQUIRES(module:ndsampler)
+        >>> from netharn.examples.segmentation import *  # NOQA
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('shapes')
         >>> input_dims = (512, 512)
         >>> self = dset = SegmentationDataset(sampler, input_dims)
-        >>> output = self[10]
+        >>> output = self[1]
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> plt = kwplot.autoplt()
@@ -177,7 +178,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         """
         Example:
             >>> # DISABLE_DOCTEST
-            >>> self = SegmentationDataset.demo(augment=True)
+            >>> self = SegmentationDataset.demo(augmenter=True)
             >>> output = self[10]
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -282,10 +283,17 @@ class SegmentationDataset(torch.utils.data.Dataset):
         return heatmap
 
     def _colorized_labels(self, cidxs):
-        self.cx_to_color = np.array([
-            self.sampler.dset.name_to_cat[self.classes[cx]]['color']
+        dset = self.sampler.dset
+        cx_to_color = [
+            dset.name_to_cat.get(self.classes[cx], {}).get('color', None)
             for cx in range(len(self.cid_to_cidx))
-        ])
+        ]
+        if any(color is None for color in cx_to_color):
+            defaults = kwimage.Color.distinct(len(cx_to_color))
+            for cx, color in enumerate(cx_to_color):
+                if color is None:
+                    cx_to_color[cx] = defaults[cx]
+        self.cx_to_color = np.array(cx_to_color)
         colorized = self.cx_to_color[cidxs]
         return colorized
 
@@ -294,7 +302,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         # from grab_camvid import grab_coco_camvid
         # dset = grab_coco_camvid()
         import ndsampler
-        sampler = ndsampler.CocoSampler.demo('shapes', workdir=None, backend='npy')
+        sampler = ndsampler.CocoSampler.demo(
+            'shapes', workdir=None, backend=None)
         self = cls(sampler, **kwargs)
         return self
 
