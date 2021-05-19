@@ -805,27 +805,27 @@ if __name__ == '__main__':
         # demonstrate grab the CamVid dataset (the following script also
         # transforms camvid into the MS-COCO format)
 
-        python -m netharn.data.grab_camvid  # Download MS-COCO files
+        python -m kwcoco.data.grab_camvid  # Download MS-COCO files
 
         python -m netharn.examples.segmentation --workers=4 --xpu=cpu --name=camvid_deeplab \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --schedule=step-90-120 --arch=deeplab --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --schedule=step-90-120 --arch=deeplab_v3 --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
 
         python -m netharn.examples.segmentation --workers=4 --xpu=0 --name=camvid_deeplab \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --schedule=step-90-120 --arch=deeplab --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --schedule=step-90-120 --arch=deeplab_v3 --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
 
         python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
             --schedule=step-90-120 --arch=psp --batch_size=6 --lr=1e-3 --input_dims=512,512 --optim=sgd --bstep=1
 
         # Note you would need to change the path to a pretrained network
         python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip_fine \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
             --pretrained=$HOME/work/sseg/fit/runs/camvid_psp_wip/fowjplca/deploy_SegmentationModel_fowjplca_134_CZARGB.zip \
             --schedule=step-90-120 --arch=psp --batch_size=6 --lr=1e-2 --input_dims=512,512 --optim=sgd --bstep=8
     """
