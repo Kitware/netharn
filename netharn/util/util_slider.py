@@ -197,6 +197,7 @@ class SlidingWindow(ub.NiceRepr):
         Example:
             >>> from netharn.util.util_slider import *  # NOQA
             >>> window = (10, 10)
+            >>> shape = (20, 20)
             >>> self = SlidingWindow(shape, window, stride=5)
             >>> itered_items = list(self)
             >>> assert len(itered_items) == len(self)
@@ -373,6 +374,7 @@ class Stitcher(ub.NiceRepr):
         Example:
             >>> import sys
             >>> from netharn.util.util_slider import *  # NOQA
+            >>> import netharn as nh
             >>> # Build a high resolution image and slice it into chips
             >>> frames = np.random.rand(1, 200, 100, 100).astype(np.float32)
             >>> window = (frames.shape[0], 15, 15, 15)

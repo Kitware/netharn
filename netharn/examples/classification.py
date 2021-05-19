@@ -309,6 +309,7 @@ class ClfDataset(torch.utils.data.Dataset):
     DataLoader. There is little netharn-specific about this class.
 
     Example:
+        >>> from netharn.examples.classification import *  # NOQA
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo()
         >>> self = ClfDataset(sampler)
@@ -369,7 +370,10 @@ class ClfDataset(torch.utils.data.Dataset):
         import kwimage
 
         # Load sample image and category
-        sample = self.sampler.load_positive(index, with_annots=False)
+        # sample = self.sampler.load_positive(index, with_annots=False)
+        tr = self.sampler.regions.get_positive(index)
+        sample = self.sampler.load_sample(tr, with_annots=False)
+
         image = kwimage.atleast_3channels(sample['im'])[:, :, 0:3]
         target = sample['tr']
 
