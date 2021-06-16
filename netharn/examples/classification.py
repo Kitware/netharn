@@ -31,6 +31,7 @@ yourself.
         --train_dataset=./toydata_train.json \
         --vali_dataset=./toydata_vali.json \
         --test_dataset=./toydata_test.json \
+        --workdir=$HOME/work/netharn \
         --input_dims=224,244 \
         --batch_size=32 \
         --max_epoch=100 \
@@ -39,6 +40,31 @@ yourself.
         --schedule=ReduceLROnPlateau-p10-c10 \
         --augmenter=medium \
         --lr=1e-3
+
+
+Equivalently you could call this via python
+
+.. code-block:: python
+
+    from netharn.examples.classification import setup_harn
+
+    kwargs = {
+        'name': 'My Classification Example',
+        'train_dataset': './toydata_train.json',
+        'vali_dataset': './toydata_vali.json',
+        'workdir': '$HOME/work/netharn',
+        'input_dims': (224, 244),
+        'batch_size': 32,
+        'max_epoch': 100,
+        'patience': 40,
+        'xpu': 'auto',
+        'schedule': 'ReduceLROnPlateau-p10-c10',
+        'augmenter': 'medium',
+        'lr': 1e-3,
+    }
+
+    harn = setup_harn(**kwargs)
+    harn.run()
 
 # TODO: describe what the output of this should look like.
 
@@ -283,6 +309,7 @@ class ClfDataset(torch.utils.data.Dataset):
     DataLoader. There is little netharn-specific about this class.
 
     Example:
+        >>> from netharn.examples.classification import *  # NOQA
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo()
         >>> self = ClfDataset(sampler)
@@ -343,7 +370,10 @@ class ClfDataset(torch.utils.data.Dataset):
         import kwimage
 
         # Load sample image and category
-        sample = self.sampler.load_positive(index, with_annots=False)
+        # sample = self.sampler.load_positive(index, with_annots=False)
+        tr = self.sampler.regions.get_positive(index)
+        sample = self.sampler.load_sample(tr, with_annots=False)
+
         image = kwimage.atleast_3channels(sample['im'])[:, :, 0:3]
         target = sample['tr']
 
@@ -403,15 +433,6 @@ class ClfDataset(torch.utils.data.Dataset):
         if len(self) == 0:
             raise Exception('must have some data')
 
-        def worker_init_fn(worker_id):
-            for i in range(worker_id + 1):
-                seed = np.random.randint(0, int(2 ** 32) - 1)
-            seed = seed + worker_id
-            kwarray.seed_global(seed)
-            if self.augmenter:
-                rng = kwarray.ensure_rng(None)
-                self.augmenter.seed_(rng)
-
         loaderkw = {
             'num_workers': num_workers,
             'pin_memory': pin_memory,
@@ -435,6 +456,20 @@ class ClfDataset(torch.utils.data.Dataset):
 
         loader = torch.utils.data.DataLoader(self, **loaderkw)
         return loader
+
+
+def worker_init_fn(worker_id, augmenter=None):
+    for i in range(worker_id + 1):
+        seed = np.random.randint(0, int(2 ** 31) - 1)
+    seed = seed + worker_id
+    kwarray.seed_global(seed)
+
+    worker_info = torch.utils.data.get_worker_info()
+    self = worker_info.dataset
+
+    if self.augmenter:
+        rng = kwarray.ensure_rng(None)
+        self.augmenter.seed_(rng)
 
 
 class ClfHarn(nh.FitHarn):

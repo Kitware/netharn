@@ -4,6 +4,8 @@ An train an example semenatic segmenation model on the CamVid dataset.
 For a more general segmentation example that works with any (ndsampler-style)
 MS-COCO dataset see segmentation.py.
 
+NOTE: This will eventually be deprecated and repalced by "segmentation.py"
+
 CommandLine:
     python ~/code/netharn/examples/sseg_camvid.py --workers=4 --xpu=0 --batch_size=2 --nice=expt1
 """
@@ -161,7 +163,10 @@ class SegmentationDataset(torch.utils.data.Dataset):
         """
         import netharn as nh
         gid_to_slider = {}
+        self.sampler.dset._ensure_imgsize(fail=True)
+
         for img in self.sampler.dset.imgs.values():
+            print('img = {!r}'.format(img))
             full_dims = [img['height'], img['width']]
             slider = nh.util.SlidingWindow(full_dims, input_dims,
                                            overlap=input_overlap,
@@ -277,7 +282,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
     @classmethod
     def demo(cls, **kwargs):
-        from netharn.data.grab_camvid import grab_coco_camvid
+        from kwcoco.data.grab_camvid import grab_coco_camvid
         import ndsampler
         dset = grab_coco_camvid()
         sampler = ndsampler.CocoSampler(dset, workdir=None, backend='npy')
@@ -790,7 +795,7 @@ def setup_coco_datasets():
         - [ ] Do proper train / validation split
         - [ ] Allow custom train / validation split
     """
-    from netharn.data.grab_camvid import grab_coco_camvid, grab_camvid_train_test_val_splits
+    from kwcoco.data.grab_camvid import grab_coco_camvid, grab_camvid_train_test_val_splits
     coco_dset = grab_coco_camvid()
 
     # Use the same train/test/vali splits used in segnet
@@ -1018,7 +1023,7 @@ def setup_harn(cmdline=True, **kw):
     else:
         raise KeyError(config['arch'])
 
-    if config['init'] == 'cls':
+    if config['init'] == 'cls' and hasattr(model_[0], '_initializer_cls'):
         initializer_ = model_[0]._initializer_cls()
 
     # Create hyperparameters

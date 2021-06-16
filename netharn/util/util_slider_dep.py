@@ -232,7 +232,7 @@ class SlidingSlices(ub.NiceRepr):
             >>> resized = np.pad(resized, padding, mode='constant')
             >>> # FIXME: Following scale doesnt work right
             >>> import kwimage
-            >>> kwimage.imscale(pred.astype(np.uint8), (xscale, yscale))[0].shape
+            >>> kwimage.imresize(pred.astype(np.uint8), (xscale, yscale))[0].shape
         """
         def slcenter(sl):
             """ center of the window defined by a slice """

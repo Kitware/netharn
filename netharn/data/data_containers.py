@@ -23,8 +23,13 @@ from netharn.device import DataParallel, DataSerial, XPU
 from torch.nn.parallel._functions import _get_stream
 from torch.nn.parallel._functions import Scatter as OrigScatter
 from torch.nn.parallel._functions import Gather as OrigGather
-from torch._six import container_abcs
-from torch._six import int_classes, string_classes
+try:
+    import collections.abc as container_abcs
+    from six import string_types as string_classes
+    from six import integer_types as int_classes
+except Exception:
+    from torch._six import container_abcs
+    from torch._six import string_classes, int_classes
 default_collate = torch_data.dataloader.default_collate
 
 
@@ -112,7 +117,7 @@ class BatchContainer(ub.NiceRepr):
             shape_repr = ub.repr2(self.nestshape, nl=-2)
             return 'nestshape(data)={}'.format(shape_repr)
         except Exception:
-            return super().__repr__()
+            return object.__repr__(self)
 
     def __getitem__(self, index):
         cls = self.__class__
@@ -228,7 +233,8 @@ class ItemContainer(ub.NiceRepr):
             shape_repr = ub.repr2(self.nestshape, nl=-2)
             return 'nestshape(data)={}'.format(shape_repr)
         except Exception:
-            return super().__repr__()
+            return object.__repr__(self)
+            # return super().__repr__()
 
     @classmethod
     def demo(cls, key='img', rng=None, **kwargs):
@@ -397,6 +403,38 @@ class ItemContainer(ub.NiceRepr):
                     [sample.data for sample in inbatch[i:i + samples_per_device]])
         result = BatchContainer(stacked, **item0.meta)
         return result
+
+
+def decollate_batch(batch):
+    """
+    Breakup a collated batch of BatchContainers back into ItemContainers
+
+    Example:
+        >>> bsize = 5
+        >>> batch_items = [
+        >>>     {
+        >>>         'im': ItemContainer.demo('img'),
+        >>>         'label': ItemContainer.demo('labels'),
+        >>>         'box': ItemContainer.demo('box'),
+        >>>     }
+        >>>     for _ in range(bsize)
+        >>> ]
+        >>> batch = container_collate(batch_items, num_devices=2)
+        >>> decollated = decollate_batch(batch)
+        >>> assert len(decollated) == len(batch_items)
+        >>> assert (decollated[0]['im'].data == batch_items[0]['im'].data).all()
+    """
+    import ubelt as ub
+    from kwcoco.util.util_json import IndexableWalker
+    walker = IndexableWalker(batch)
+    decollated_dict = ub.AutoDict()
+    decollated_walker = IndexableWalker(decollated_dict)
+    for path, batch_val in walker:
+        if isinstance(batch_val, BatchContainer):
+            for bx, item_val in enumerate(ub.flatten(batch_val.data)):
+                decollated_walker[[bx] + path] = ItemContainer(item_val)
+    decollated = list(decollated_dict.to_dict().values())
+    return decollated
 
 
 def container_collate(inbatch, num_devices=None):
@@ -914,6 +952,32 @@ def nestshape(data):
         >>> data = [np.arange(10), np.arange(13)]
         >>> nestshape(data)
         [(10,), (13,)]
+
+    Ignore:
+        >>> # xdoctest: +REQUIRES(module:mmdet)
+        >>> from netharn.data.data_containers import *  # NOQA
+
+        >>> from mmdet.core.mask.structures import *  # NOQA
+        >>> masks = [
+        >>>     [ np.array([0, 0, 10, 0, 10, 10., 0, 10, 0, 0]) ],
+        >>>     [ np.array([0, 0, 10, 0, 10, 10., 0, 10, 5., 5., 0, 0]) ]
+        >>> ]
+        >>> height, width = 16, 16
+        >>> polys = PolygonMasks(masks, height, width)
+        >>> nestshape(polys)
+
+        >>> dc = BatchContainer([polys], stack=False)
+        >>> print('dc = {}'.format(ub.repr2(dc, nl=1)))
+
+        >>> num_masks, H, W = 3, 32, 32
+        >>> rng = np.random.RandomState(0)
+        >>> masks = (rng.rand(num_masks, H, W) > 0.1).astype(np.int)
+        >>> bitmasks = BitmapMasks(masks, height=H, width=W)
+        >>> nestshape(bitmasks)
+
+        >>> dc = BatchContainer([bitmasks], stack=False)
+        >>> print('dc = {}'.format(ub.repr2(dc, nl=1)))
+
     """
     import ubelt as ub
 
@@ -922,7 +986,9 @@ def nestshape(data):
         import numpy as np
         if isinstance(d, dict):
             return ub.odict(sorted([(k, _recurse(v)) for k, v in d.items()]))
-        elif 'Container' in type(d).__name__:
+
+        clsname = type(d).__name__
+        if 'Container' in clsname:
             meta = ub.odict(sorted([
                 ('stack', d.stack),
                 # ('padding_value', d.padding_value),
@@ -946,6 +1012,17 @@ def nestshape(data):
             return d
         elif isinstance(d, slice):
             return d
+        elif 'PolygonMasks' == clsname:
+            # hack for mmdet
+            return repr(d)
+        elif 'BitmapMasks' == clsname:
+            # hack for mmdet
+            return repr(d)
+        elif hasattr(d, 'shape'):
+            return d.shape
+        elif hasattr(d, 'items'):
+            # hack for dict-like objects
+            return ub.odict(sorted([(k, _recurse(v)) for k, v in d.items()]))
         else:
             raise TypeError(type(d))
 

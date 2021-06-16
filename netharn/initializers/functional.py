@@ -823,6 +823,7 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
             else:
                 break
         return score
+
         # return tok1[-1] == tok2[-1]
     node_affinity = _affinity
     # import operator

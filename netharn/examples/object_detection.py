@@ -151,12 +151,13 @@ class DetectDataset(torch.utils.data.Dataset):
 
         Example:
             >>> # DISABLE_DOCTSET
-            >>> self = DetectDataset.demo(backend='npy')
+            >>> from netharn.examples.object_detection import *  # NOQA
+            >>> self = DetectDataset.demo(backend=None)
             >>> index = 0
             >>> item = self[index]
             >>> hwc01 = item['im'].numpy().transpose(1, 2, 0)
             >>> print(hwc01.shape)
-            >>> norm_boxes = item['label']['targets'].numpy().reshape(-1, 5)[:, 1:5]
+            >>> norm_boxes = item['label']['cxywh'].numpy().reshape(-1, 4)[:, 0:4]
             >>> inp_size = hwc01.shape[-2::-1]
             >>> # xdoc: +REQUIRES(--show)
             >>> import kwplot
@@ -483,7 +484,7 @@ class DetectHarn(nh.FitHarn):
         """ Convert batch groundtruth to coco-style annotations for scoring """
         indices = labels['indices']
         orig_sizes = labels['orig_sizes']
-        targets = labels['targets']
+        targets = labels['cxywh']
         gt_weights = labels['gt_weights']
 
         letterbox = harn.datasets[harn.current_tag].letterbox

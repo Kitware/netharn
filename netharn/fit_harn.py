@@ -444,6 +444,35 @@ class InitializeMixin(object):
         else:
             harn.warn('harn.train_dpath is None, all computation is in memory')
 
+        if isinstance(harn.preferences['timeout'], str):
+            import datetime
+            import parse
+            text = harn.preferences['timeout']
+
+            def parse_timedelta_text(text):
+                candidate_formats = [
+                    '{microseconds:d}us',
+                    '{milliseconds}ms',
+                    '{minutes}m',
+                    '{seconds}s',
+                    '{hours:d}h',
+                    '{days:d}d',
+                    '{weeks:d}w',
+                ]
+                text_ = text.lower()
+                for fmt in candidate_formats:
+                    result = parse.parse(fmt, text_)
+                    if result is not None:
+                        delta = datetime.timedelta(**result.named)
+                        break
+                if delta is None:
+                    raise Exception('Unknown time format {}'.format(text))
+                return delta
+
+            delta = parse_timedelta_text(text)
+            print('delta = {!r}'.format(delta))
+            harn.preferences['timeout'] = delta.total_seconds()
+
         harn._initialized = True
         harn.after_initialize()
         return harn
@@ -1498,19 +1527,18 @@ class CoreMixin(object):
 
             action = 'resume' if harn.epoch > 0 else 'begin'
             if harn.preferences['prog_backend'] == 'progiter':
-                harn.info(ub.color_text('=== {} training {!r} / {!r} : {} ==='.format(
+                text = '=== {} training {!r} / {!r} : {} ==='.format(
                     action, harn.epoch + 1, harn.monitor.max_epoch,
-                    harn.hyper.name), 'white'))
+                    harn.hyper.name)
+                harn.info(ub.color_text(text, 'white'))
             else:
                 harn.info(ub.color_text('=== {} training : {} ==='.format(
                     action, harn.hyper.name), 'white'))
 
-            harn.main_prog = harn._make_prog(desc='epoch',
-                                             total=harn.monitor.max_epoch,
-                                             disable=not harn.preferences['show_prog'],
-                                             leave=True, dynamic_ncols=True,
-                                             show_wall=True, position=0,
-                                             initial=harn.epoch)
+            harn.main_prog = harn._make_prog(
+                desc='epoch', total=harn.monitor.max_epoch, disable=not
+                harn.preferences['show_prog'], leave=True, dynamic_ncols=True,
+                show_wall=True, position=0, initial=harn.epoch)
             harn._update_main_prog_desc()
 
             # Loader dict should be ordered
@@ -1537,9 +1565,17 @@ class CoreMixin(object):
                 if harn.scheduler:
                     if harn.scheduler.__class__.__name__ == 'ReduceLROnPlateau':
                         if vali_loader is None:
-                            raise ValueError('A validation dataset is required to use ReduceLROnPlateau, but None was given')
+                            raise ValueError(ub.paragraph(
+                                '''
+                                A validation dataset is required to use
+                                ReduceLROnPlateau, but None was given
+                                '''))
                         else:
-                            raise ValueError('A non-empty validation dataset is required to use ReduceLROnPlateau')
+                            raise ValueError(ub.paragraph(
+                                '''
+                                A non-empty validation dataset is required to
+                                use ReduceLROnPlateau
+                                '''))
 
             #############################
             ### THIS IS THE MAIN LOOP ###

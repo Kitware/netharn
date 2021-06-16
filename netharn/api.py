@@ -37,7 +37,6 @@ class Datasets(object):
             >>> print(ub.repr2(nh.api.Datasets.coerce(config, **kw)))
         """
         from ndsampler import coerce_data
-
         config = _update_defaults(config, kw)
         torch_datasets = coerce_data.coerce_datasets(config)
         return torch_datasets
@@ -835,6 +834,15 @@ def configure_hacks(config={}, **kw):
         if strat not in valid_strats:
             raise KeyError('start={} is not in valid_strats={}'.format(strat, valid_strats))
         torch.multiprocessing.set_sharing_strategy(strat)
+
+    if 0:
+        """
+        References:
+            https://britishgeologicalsurvey.github.io/science/python-forking-vs-spawn/
+        """
+        import torch
+        # torch_multiprocessing.get_context()
+        torch.multiprocessing.set_start_method('spawn')
 
 
 def configure_workdir(config={}, **kw):

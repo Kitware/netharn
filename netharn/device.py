@@ -11,8 +11,10 @@ import torch
 import six
 import os
 from netharn import util
-from torch._six import container_abcs
-
+try:
+    import collections.abc as container_abcs
+except Exception:
+    from torch._six import container_abcs
 
 __all__ = ['XPU']
 

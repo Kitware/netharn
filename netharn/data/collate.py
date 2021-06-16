@@ -13,10 +13,14 @@ import re
 # elif six.PY3:
 #     import collections.abc
 #     container_abcs = collections.abc
-# string_classes = six.string_types
-# int_classes = six.integer_types
-from torch._six import container_abcs
-from torch._six import string_classes, int_classes
+try:
+    import collections.abc as container_abcs
+    from six import string_types as string_classes
+    from six import integer_types as int_classes
+except Exception:
+    from torch._six import container_abcs
+    from torch._six import string_classes, int_classes
+
 default_collate = torch_data.dataloader.default_collate
 
 

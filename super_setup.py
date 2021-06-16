@@ -71,7 +71,7 @@ def parse_version(package):
     Statically parse the version number from __init__.py
 
     CommandLine:
-        python -c "import setup; print(setup.parse_version('ovharn'))"
+        python -c "import setup; print(setup.parse_version('netharn'))"
     """
     from os.path import dirname, join
     import ast
@@ -379,16 +379,35 @@ class Repo(ub.NiceRepr):
         return repo._pygit
 
     def develop(repo):
+        """
+        Install each repo in development mode.
+        """
+        # NOTE: We need ensure build requirements are satisfied!
+        build_req_fpath = join(repo.dpath, 'requirements/build.txt')
+        if exists(build_req_fpath):
+            repo._cmd('pip install -r {}'.format(build_req_fpath), cwd=repo.dpath)
+
         if ub.WIN32:
             # We can't run a shell file on win32, so lets hope this works
             import warnings
             warnings.warn('super_setup develop may not work on win32')
             repo._cmd('pip install -e .', cwd=repo.dpath)
         else:
-            devsetup_script_fpath = join(repo.dpath, 'run_developer_setup.sh')
-            if not exists(devsetup_script_fpath):
-                raise AssertionError('Assume we always have run_developer_setup.sh: repo={!r}'.format(repo))
-            repo._cmd(devsetup_script_fpath, cwd=repo.dpath)
+            repo._cmd('pip install -e .', cwd=repo.dpath)
+            # devsetup_script_fpath = join(repo.dpath, 'run_developer_setup.sh')
+            # if not exists(devsetup_script_fpath):
+            #     raise AssertionError('Assume we always have run_developer_setup.sh: repo={!r}'.format(repo))
+            # repo._cmd(devsetup_script_fpath, cwd=repo.dpath)
+
+    @classmethod
+    def demo(Repo, ensure=True):
+        repo = Repo(
+            remote='https://github.com/Erotemic/ubelt.git',
+            code_dpath=ub.ensuredir(ub.expandpath('~/tmp/demo-repos')),
+        )
+        if ensure:
+            repo.ensure()
+        return repo
 
     def doctest(repo):
         if ub.WIN32:
@@ -448,7 +467,17 @@ class Repo(ub.NiceRepr):
             repo.debug('Clone non-existing repo={}'.format(repo))
             repo.clone()
 
-    def update_to_latest_dev_branch(repo, dry=False):
+    def upgrade(repo, dry=False):
+        """
+        Look for a "dev" branch with a higher version number and switch to that.
+
+        Example:
+            >>> from super_setup import *
+            >>> import ubelt as ub
+            >>> repo = Repo.demo()
+            >>> print('repo = {}'.format(repo))
+            >>> repo.upgrade()
+        """
         remote = repo._registered_remote()
         repo._cmd('git fetch {}'.format(remote.name))
         repo.info('Fetch was successful')
@@ -456,13 +485,19 @@ class Repo(ub.NiceRepr):
         print('remote_branchnames = {!r}'.format(remote_branchnames))
 
         # Find all the dev branches
-        dev_branches = [ref for ref in remote.refs
-                        if ref.remote_head.startswith('dev/')]
+        dev_branches_ = [ref for ref in remote.refs
+                         if ref.remote_head.startswith('dev/')]
 
-        version_tuples = [
-            tuple(map(int, ref.remote_head.split('dev/')[1].split('.')))
-            for ref in dev_branches
-        ]
+        dev_branches = []
+        version_tuples = []
+        for ref in dev_branches_:
+            try:
+                tup = tuple(map(int, ref.remote_head.split('dev/')[1].split('.')))
+                dev_branches.append(ref)
+                version_tuples.append(tup)
+            except Exception:
+                pass
+
         latest_ref = dev_branches[ub.argmax(version_tuples)]
         latest_branch = latest_ref.remote_head
 
@@ -483,9 +518,11 @@ class Repo(ub.NiceRepr):
         try:
             remote = repo.pygit.remotes[repo.remote]
         except IndexError:
-            if not dry:
-                raise AssertionError('Something went wrong')
-            else:
+            repo._ensure_remotes(dry=dry)
+            try:
+                remote = repo.pygit.remotes[repo.remote]
+            except IndexError:
+                repo.debug('Something went wrong, cannot find remote in git')
                 remote = None
 
         if remote is not None:
@@ -500,6 +537,32 @@ class Repo(ub.NiceRepr):
                 if not remote.exists():
                     repo.debug('Requested remote does NOT exist')
         return remote
+
+    def _ensure_remotes(repo, dry=True):
+        """
+        Ensures the the registred remotes exists in the git repo.
+        """
+        for remote_name, remote_url in repo.remotes.items():
+            try:
+                remote = repo.pygit.remotes[remote_name]
+                have_urls = list(remote.urls)
+                if remote_url not in have_urls:
+                    # TODO supress this warning if its just a git vs https
+                    # thing using GitURL
+                    print('WARNING: REMOTE NAME EXISTS BUT URL IS NOT {}. '
+                          'INSTEAD GOT: {}'.format(remote_url, have_urls))
+            except (IndexError):
+                try:
+                    print('NEED TO ADD REMOTE {}->{} FOR {}'.format(
+                        remote_name, remote_url, repo))
+                    if not dry:
+                        repo._cmd('git remote add {} {}'.format(remote_name, remote_url))
+                    else:
+                        raise AssertionError('In dry mode, cannot ensure remotes')
+                except ShellException:
+                    if remote_name == repo.remote:
+                        # Only error if the main remote is not available
+                        raise
 
     def ensure(repo, dry=False):
         """
@@ -522,29 +585,8 @@ class Repo(ub.NiceRepr):
 
         repo._assert_clean()
 
-        # Ensure all registered remotes exist
-        for remote_name, remote_url in repo.remotes.items():
-            try:
-                remote = repo.pygit.remotes[remote_name]
-                have_urls = list(remote.urls)
-                if remote_url not in have_urls:
-                    # TODO supress this warning if its just a git vs https
-                    # thing using GitURL
-                    print('WARNING: REMOTE NAME EXISTS BUT URL IS NOT {}. '
-                          'INSTEAD GOT: {}'.format(remote_url, have_urls))
-            except (IndexError):
-                try:
-                    print('NEED TO ADD REMOTE {}->{} FOR {}'.format(
-                        remote_name, remote_url, repo))
-                    if not dry:
-                        repo._cmd('git remote add {} {}'.format(remote_name, remote_url))
-                except ShellException:
-                    if remote_name == repo.remote:
-                        # Only error if the main remote is not available
-                        raise
-
         # Ensure we have the right remote
-        remote = repo._registered_remote()
+        remote = repo._registered_remote(dry=dry)
 
         if remote is not None:
             try:
@@ -570,7 +612,11 @@ class Repo(ub.NiceRepr):
 
             # Ensure the remote points to the right place
             if repo.url not in list(remote.urls):
-                repo.debug('WARNING: The requested url={} disagrees with remote urls={}'.format(repo.url, list(remote.urls)))
+                repo.debug(ub.paragraph(
+                    '''
+                    'WARNING: The requested url={} disagrees with remote
+                    urls={}
+                    ''').format(repo.url, list(remote.urls)))
 
                 if dry:
                     repo.info('Dry run, not updating remote url')
@@ -579,7 +625,27 @@ class Repo(ub.NiceRepr):
                     repo._cmd('git remote set-url {} {}'.format(repo.remote, repo.url))
 
             # Ensure we are on the right branch
-            if repo.branch != repo.pygit.active_branch.name:
+            try:
+                active_branch_name = repo.pygit.active_branch.name
+            except TypeError:
+                # We may be on a tag, not a branch
+                candidates = [tag for tag in repo.pygit.tags if tag.name == repo.branch]
+                if len(candidates) != 1:
+                    raise
+                else:
+                    # branch is actually a tag
+                    assert len(candidates) == 1
+                    want_tag = candidates[0]
+                    is_on_correct_commit = (
+                        repo.pygit.head.commit.hexsha == want_tag.commit.hexsha
+                    )
+                    ref_is_tag = True
+            else:
+                ref_is_tag = False
+                tracking_branch = repo.pygit.active_branch.tracking_branch()
+                is_on_correct_commit = repo.branch == active_branch_name
+
+            if not is_on_correct_commit:
                 repo.debug('NEED TO SET BRANCH TO {} for {}'.format(repo.branch, repo))
                 if dry:
                     repo.info('Dry run, not setting branch')
@@ -594,42 +660,54 @@ class Repo(ub.NiceRepr):
                         except ShellException:
                             raise Exception('does the branch exist on the remote?')
 
-            tracking_branch = repo.pygit.active_branch.tracking_branch()
-            if tracking_branch is None or tracking_branch.remote_name != repo.remote:
-                repo.debug('NEED TO SET UPSTREAM FOR FOR {}'.format(repo))
+            if not ref_is_tag:
+                if tracking_branch is None or tracking_branch.remote_name != repo.remote:
+                    repo.debug('NEED TO SET UPSTREAM FOR FOR {}'.format(repo))
 
-                try:
-                    remote = repo.pygit.remotes[repo.remote]
-                    if not remote.exists():
-                        raise IndexError
-                except IndexError:
-                    repo.debug('WARNING: remote={} does not exist'.format(remote))
-                else:
-                    if remote.exists():
-                        remote_branchnames = [ref.remote_head for ref in remote.refs]
-                        if repo.branch not in remote_branchnames:
-                            if dry:
-                                repo.info('Branch name not found in local remote. Dry run, use ensure to attempt to fetch')
+                    try:
+                        remote = repo.pygit.remotes[repo.remote]
+                        if not remote.exists():
+                            raise IndexError
+                    except IndexError:
+                        repo.debug('WARNING: remote={} does not exist'.format(remote))
+                    else:
+                        if remote.exists():
+                            remote_branchnames = [ref.remote_head for ref in remote.refs]
+                            if repo.branch not in remote_branchnames:
+                                if dry:
+                                    repo.info('Branch name not found in local remote. Dry run, use ensure to attempt to fetch')
+                                else:
+                                    repo.info('Branch name not found in local remote. Attempting to fetch')
+                                    repo._cmd('git fetch {}'.format(repo.remote))
+
+                                    remote_branchnames = [ref.remote_head for ref in remote.refs]
+                                    if repo.branch not in remote_branchnames:
+                                        raise Exception('Branch name still does not exist')
+
+                            if not dry:
+                                repo._cmd('git branch --set-upstream-to={remote}/{branch} {branch}'.format(
+                                    remote=repo.remote, branch=repo.branch
+                                ))
                             else:
-                                repo.info('Branch name not found in local remote. Attempting to fetch')
-                                repo._cmd('git fetch {}'.format(repo.remote))
+                                repo.info('Would attempt to set upstream')
 
-                                remote_branchnames = [ref.remote_head for ref in remote.refs]
-                                if repo.branch not in remote_branchnames:
-                                    raise Exception('Branch name still does not exist')
-
-                        if not dry:
-                            repo._cmd('git branch --set-upstream-to={remote}/{branch} {branch}'.format(
-                                remote=repo.remote, branch=repo.branch
-                            ))
-                        else:
-                            repo.info('Would attempt to set upstream')
+        # Check if the current head is tagged
+        head_tags = [
+            tag for tag in repo.pygit.tags
+            if tag.commit.hexsha == repo.pygit.head.commit.hexsha
+        ]
 
         # Print some status
-        repo.debug(' * branch = {} -> {}'.format(
-            repo.pygit.active_branch.name,
-            repo.pygit.active_branch.tracking_branch(),
-        ))
+        try:
+            repo.debug(' * branch = {} -> {}'.format(
+                repo.pygit.active_branch.name,
+                repo.pygit.active_branch.tracking_branch(),
+            ))
+        except Exception:
+            pass
+
+        if head_tags:
+            repo.debug(' * head_tags = {}'.format(head_tags))
 
     def pull(repo):
         repo._assert_clean()
@@ -768,23 +846,24 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.15', 'remote': 'public',
+        'name': 'kwarray', 'branch': 'dev/0.5.20', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.6.11', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.8', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
+    # TODO:
+    # {
+    #     'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'public',
+    #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
+    # },
     {
-        'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
-    },
-    {
-        'name': 'kwcoco', 'branch': 'dev/0.1.10', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.2.6', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.8', 'remote': 'public',
+        'name': 'kwplot', 'branch': 'dev/0.4.9', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
@@ -794,23 +873,23 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:python/liberator.git'},
     },
     {
-        'name': 'torch_liberator', 'branch': 'dev/0.0.5', 'remote': 'public',
+        'name': 'torch_liberator', 'branch': 'dev/0.1.1', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/torch_liberator.git'},
     },
 
     # For example data and CLI
     {
-        'name': 'scriptconfig', 'branch': 'dev/0.5.8', 'remote': 'public',
+        'name': 'scriptconfig', 'branch': 'dev/0.5.9', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.5.14', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.6.4', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.15', 'remote': 'public',
+        'name': 'netharn', 'branch': 'dev/0.5.16', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]
@@ -851,7 +930,6 @@ def main():
         if repo.name == MAIN_REPO_NAME:
             main_repo = repo
             break
-    assert main_repo is not None
 
     HACK_PROTOCOL = True
     if HACK_PROTOCOL:
@@ -933,7 +1011,8 @@ def main():
     @cli_group.add_command
     @click.command('upgrade', context_settings=default_context_settings)
     def upgrade():
-        main_repo.update_to_latest_dev_branch()
+        assert main_repo is not None
+        main_repo.upgrade()
 
     cli_group()
 
@@ -944,11 +1023,15 @@ docker run -v $PWD:/io --rm -it $DOCKER_IMAGE bash
 
 mkdir -p $HOME/code
 cd $HOME/code
-git clone -b dev/0.5.5 https://gitlab.kitware.com/computer-vision/netharn.git
+git clone https://gitlab.kitware.com/computer-vision/netharn.git
 cd $HOME/code/netharn
 
 pip install -r requirements/super_setup.txt
+python super_setup.py upgrade --serial
 python super_setup.py ensure --serial
+
+# Seems like sudo is necessary for permission issues in docker
+sudo python super_setup.py develop --serial
 
 """
 

@@ -98,6 +98,9 @@ def is_symlink_broken(path):
         https://stackoverflow.com/questions/20794/find-broken-symlinks-with-python
 
     Example:
+        >>> import pytest
+        >>> if ub.WIN32:
+        >>>     pytest.skip('symlink checks on windows dont always work')
         >>> test_dpath = ub.ensure_app_cache_dir('test')
         >>> real_fpath = ub.touch(join(test_dpath, 'real'))
         >>> link_fpath = ub.symlink(real_fpath, join(test_dpath, 'link'))
@@ -327,7 +330,8 @@ def _devcheck_remove_dead_runs(workdir, dry=True, dead_num_snap_thresh=10,
 
     all_info = [s.info for s in all_sessions]
 
-    nice_groups = ub.group_items(all_info, lambda x: x['name'])
+    nice_groups = ub.group_items(all_info, lambda x: x.get('name', x.get('nice', None)))
+    nice_groups.pop(None, None)
     for name, group in nice_groups.items():
         print(' --- {} --- '.format(name))
         group = sorted(group, key=lambda x: x['size'])
@@ -627,6 +631,8 @@ if __name__ == '__main__':
 
         python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=~/work/voc_yolo2/  --recent 2 --factor 40
         python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=~/work/voc_yolo2/
+
+        python -m netharn.cli.manage_runs --mode=summarize --workdir=.
         python -m netharn.cli.manage_runs --mode=clean_monitor --workdir=. -f
         python -m netharn.cli.manage_runs --mode=clean_runs --workdir=.
         python -m netharn.cli.manage_runs --mode=clean_checkpoints --workdir=. --recent 2 --factor 40 -f

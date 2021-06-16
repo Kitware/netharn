@@ -8,6 +8,43 @@ References:
 Potential Solutions:
     https://stackoverflow.com/questions/6832554/multiprocessing-how-do-i-share-a-dict-among-multiple-processes
 
+
+Notes:
+    The issue does not stem from any quirk in the multiprocessing library. It
+    is a fundamental consequence of Python reference counting and the
+    operating-system level fork operation. When the OS forks the base Python
+    process it creates a new nearly identical process (Python variables even
+    have the same id). This new process is very lightweight because it does not
+    copy over all the memory from the original program. Instead, it will only
+    copy bits of memory as they are changed, i.e. diverge from the base
+    process. This is the copy-on-write behavior. When an item of a Python list
+    is accessed by the forked process, it must increment the reference count of
+    whatever it accessed, and thus the OS perceives a write and triggers the
+    copy on write. But the OS doesn't just copy the small bit of memory that
+    was touched. It copies the entire memory page that the reference count for
+    the variable existed on. That's why the problem is so much worse when you
+    do random access (in sequential access the memory page that is copied
+    likely has the next reference count you were going to increment anyway, but
+    in random access discontiguous blocks of memory are copied,... well...
+    randomly). The one part I don't have a firm grasp on is why the problem
+    doesn't plateau as you start to randomly access information in pages you
+    already copied.  Perhaps the information is stale somehow? I'm not sure.
+    But that is my best understanding of the issue.
+
+    Using a pointer to a database like SQLite completely side-steps this
+    problem, because the only information that is forked is a string that
+    points to the database URI. New connections are opened up in each of the
+    forked processes. The only issue I've had is accessing a row is now O(N
+    log(N)) instead of O(1). This can be mitigated with memoized caching, which
+    again for a reason I don't entirely understand, uses less memory than
+    fork's copy-on-write behavior. However, I see speed benefits of SQL when I
+    scale from 10,000 to 100,000 images. The SQL+memoized cache backend was
+    running consistently at 45Hz as I scaled up (theoretically there should be
+    a logarithmic slowdown, but it appears to be small enough effect that I
+    didn't see it), whereas the in-memory json data structure starts at over
+    100Hz, but slows down to 1.1Hz at scale (which theoretically should have
+    been constant at scale, but that copy-on-write appears to add a lot of
+    overhead).
 """
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
@@ -28,36 +65,32 @@ class CustomDataset(Dataset):
             self.data = np.array([x for x in range(int(total))])
         elif storage_mode == 'python':
             self.data = [x for x in range(int(total))]
+        elif storage_mode == 'ndsampler-sql':
+            import ndsampler
+            import kwcoco
+            from kwcoco.coco_sql_dataset import ensure_sql_coco_view
+            dset = kwcoco.CocoDataset.demo(
+                'vidshapes', num_videos=1, num_frames=total,
+                gsize=(64, 64)
+            )
+            dset = ensure_sql_coco_view(dset)
+            print('dset.uri = {!r}'.format(dset.uri))
+            dset.hashid = 'fake-hashid'
+            sampler = ndsampler.CocoSampler(dset, backend=None)
+            self.data = sampler
+            # sampler.load_item(0)
+            # tr = sampler.regions.get_item(0)
+            # sampler.load_sample(tr)
+            # assert total <= 1000
+            # sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
+            # sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
         elif storage_mode == 'ndsampler':
             import ndsampler
-            assert total <= 1000
-            sampler = ndsampler.CocoSampler.demo('shapes{}'.format(total))
-
-            TRY_TWEAKS = 1
-
-            if 1 and TRY_TWEAKS:
-                # Tweaks to try and prevent the sampler from leaking
-                sampler.frames._lru = None
-
-            if 1 and TRY_TWEAKS:
-                import multiprocessing
-                dset = sampler.dset
-                manager = multiprocessing.Manager()
-                dset.index.cats = manager.dict(dset.index.cats)
-                dset.index.anns = manager.dict(dset.index.anns)
-                dset.index.imgs = manager.dict(dset.index.imgs)
-                dset.index.gid_to_aids = manager.dict(dset.index.gid_to_aids)
-                dset.index.cid_to_aids = manager.dict(dset.index.cid_to_aids)
-                dset.index.vidid_to_gids = manager.dict(dset.index.vidid_to_gids)
-                dset.index.file_name_to_img = manager.dict(dset.index.file_name_to_img)
-                dset.index.name_to_cat = manager.dict(dset.index.name_to_cat)
-
-                dset.dataset = manager.dict(dset.dataset)
-
-                # sampler.frames.dset
-                # sampler.dset
-                # sampler.regions.dset
-
+            # assert total <= 10000
+            sampler = ndsampler.CocoSampler.demo(
+                'vidshapes', num_videos=1, num_frames=total,
+                gsize=(64, 64)
+            )
             self.data = sampler
         else:
             raise KeyError(storage_mode)
@@ -65,9 +98,23 @@ class CustomDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
+    # def __getstate__(self):
+    #     print('\n\nGETTING CUSTOM DATASET STATE')
+    #     return super().__getstate__()
+
+    # def __setstate__(self, val):
+    #     print('\n\nSETTING CUSTOM DATASET STATE')
+    #     return super().__setstate__(val)
+
     def __getitem__(self, idx):
-        if self.storage_mode == 'ndsampler':
-            data = self.data.load_item(idx)['im'].ravel()[0:1].astype(np.float32)
+        if 0:
+            import multiprocessing
+            print('\n\nidx = {!r}'.format(idx))
+            print('self = {!r}'.format(self))
+            print(multiprocessing.current_process())
+        if self.storage_mode == 'ndsampler' or self.storage_mode == 'ndsampler-sql':
+            sample = self.data.load_item(idx)
+            data = sample['im'].ravel()[0:1].astype(np.float32)
             data_pt = torch.from_numpy(data)
         else:
             data = self.data[idx]
@@ -180,6 +227,17 @@ def byte_str(num, unit='auto', precision=2):
     return ub.repr2(num_unit, precision=precision) + ' ' + unit
 
 
+def worker_init_fn(worker_id):
+    worker_info = torch.utils.data.get_worker_info()
+    dataset = worker_info.dataset
+    print('WORKER INIT FOR dataset')
+    if hasattr(dataset.data, 'dset'):
+        dset = dataset.data.dset
+        if hasattr(dset, 'connect'):
+            dset.connect(readonly=True)
+        print('WORKER INIT FOR dset = {!r}'.format(dset))
+
+
 def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, workers=2):
     """
     Args:
@@ -190,6 +248,11 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
         total : size of backend storage
 
     """
+
+    if 0:
+        # torch_multiprocessing.get_context()
+        torch.multiprocessing.set_start_method('spawn')
+
     mem = psutil.virtual_memory()
     start_mem = mem.used
     mem_str = byte_str(start_mem)
@@ -214,11 +277,12 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
     print('shuffle = {!r}'.format(shuffle))
 
     num_workers = workers
-    train_loader = DataLoader(train_data, batch_size=300,
-                              shuffle=shuffle,
-                              drop_last=True,
-                              pin_memory=False,
-                              num_workers=num_workers)
+    batch_size = 32
+    # batch_size = 300
+    train_loader = DataLoader(train_data, batch_size=batch_size,
+                              shuffle=shuffle, drop_last=True,
+                              pin_memory=False, num_workers=num_workers,
+                              worker_init_fn=worker_init_fn)
 
     used_nbytes = psutil.virtual_memory().used - start_mem
     print('After init DataLoader memory = {!r}'.format(byte_str(used_nbytes)))
@@ -252,7 +316,7 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
     print('measured final usage: {}'.format(byte_str(used_bytes)))
     print('measured peak usage:  {}'.format(byte_str(max_bytes)))
 
-    if hasattr(train_data.data, 'frames'):
+    if 0 and hasattr(train_data.data, 'frames'):
         sampler = train_data.data
         print('sampler.regions.__dict__ = {}'.format(
             ub.repr2(sampler.regions.__dict__, nl=1)))
@@ -263,6 +327,7 @@ def main(storage_mode='numpy', return_mode='tensor', total=24e5, shuffle=True, w
 
 if __name__ == '__main__':
     """
+
     CommandLine:
         python debug_memory.py numpy tensor --total=24e5 --shuffle=True
 
@@ -273,9 +338,23 @@ if __name__ == '__main__':
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=True
         python debug_memory.py --storage_mode=python --total=24e5 --shuffle=False
 
-        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True
+        python debug_memory.py --storage_mode=ndsampler --total=100000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-sql --total=100000 --shuffle=True --workers=4
+
+        python debug_memory.py --storage_mode=ndsampler --total=10000 --shuffle=True --workers=4
+        python debug_memory.py --storage_mode=ndsampler-sql --total=10000 --shuffle=True --workers=4
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0 --profile
+        python debug_memory.py --storage_mode=ndsampler-sql --total=1000 --shuffle=True --workers=0 --profile
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
+
+        python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=8
+        python debug_memory.py --storage_mode=ndsampler-sql --total=1000 --shuffle=False --workers=8
+
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=0
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=0
+
 
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=False --workers=4
         python debug_memory.py --storage_mode=ndsampler --total=1000 --shuffle=True --workers=4

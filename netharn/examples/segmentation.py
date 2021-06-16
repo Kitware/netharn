@@ -19,7 +19,7 @@ class SegmentationConfig(scfg.Config):
     Default configuration for setting up a training session
     """
     default = {
-        'nice': scfg.Value('untitled', help='A human readable tag that is "nice" for humans'),
+        'name': scfg.Value('untitled', help='A human readable tag that is "nice" for humans'),
         'workdir': scfg.Path('~/work/sseg', help='Dump all results in your workdir'),
 
         'workers': scfg.Value(0, help='number of parallel dataloading jobs'),
@@ -75,11 +75,12 @@ class SegmentationDataset(torch.utils.data.Dataset):
         >>> # DISABLE_DOCTEST
         >>> #input_dims = (224, 224)
         >>> # xdoctest: +REQUIRES(module:ndsampler)
+        >>> from netharn.examples.segmentation import *  # NOQA
         >>> import ndsampler
         >>> sampler = ndsampler.CocoSampler.demo('shapes')
         >>> input_dims = (512, 512)
         >>> self = dset = SegmentationDataset(sampler, input_dims)
-        >>> output = self[10]
+        >>> output = self[1]
         >>> # xdoctest: +REQUIRES(--show)
         >>> import kwplot
         >>> plt = kwplot.autoplt()
@@ -177,7 +178,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         """
         Example:
             >>> # DISABLE_DOCTEST
-            >>> self = SegmentationDataset.demo(augment=True)
+            >>> self = SegmentationDataset.demo(augmenter=True)
             >>> output = self[10]
             >>> # xdoctest: +REQUIRES(--show)
             >>> import kwplot
@@ -282,10 +283,17 @@ class SegmentationDataset(torch.utils.data.Dataset):
         return heatmap
 
     def _colorized_labels(self, cidxs):
-        self.cx_to_color = np.array([
-            self.sampler.dset.name_to_cat[self.classes[cx]]['color']
+        dset = self.sampler.dset
+        cx_to_color = [
+            dset.name_to_cat.get(self.classes[cx], {}).get('color', None)
             for cx in range(len(self.cid_to_cidx))
-        ])
+        ]
+        if any(color is None for color in cx_to_color):
+            defaults = kwimage.Color.distinct(len(cx_to_color))
+            for cx, color in enumerate(cx_to_color):
+                if color is None:
+                    cx_to_color[cx] = defaults[cx]
+        self.cx_to_color = np.array(cx_to_color)
         colorized = self.cx_to_color[cidxs]
         return colorized
 
@@ -294,7 +302,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         # from grab_camvid import grab_coco_camvid
         # dset = grab_coco_camvid()
         import ndsampler
-        sampler = ndsampler.CocoSampler.demo('shapes', workdir=None, backend='npy')
+        sampler = ndsampler.CocoSampler.demo(
+            'shapes', workdir=None, backend=None)
         self = cls(sampler, **kwargs)
         return self
 
@@ -397,6 +406,7 @@ class SegmentationHarn(nh.FitHarn):
             >>> kwplot.autompl()
             >>> kwplot.imshow(toshow)
         """
+        import cv2
         im = batch['im'].data.cpu().numpy()
         class_true = batch['class_idxs'].data.cpu().numpy()
         class_pred = outputs['class_probs'].data.cpu().numpy().argmax(axis=1)
@@ -404,10 +414,8 @@ class SegmentationHarn(nh.FitHarn):
         batch_imgs = []
 
         for bx in range(min(len(class_true), lim)):
-
             orig_img = im[bx].transpose(1, 2, 0)
 
-            import cv2
             out_size = class_pred[bx].shape[::-1]
 
             orig_img = cv2.resize(orig_img, tuple(map(int, out_size)))
@@ -713,7 +721,7 @@ def setup_harn(cmdline=True, **kw):
 
     # Create hyperparameters
     hyper = nh.HyperParams(
-        nice=config['nice'],
+        nice=config['name'],
         workdir=config['workdir'],
         xpu=nh.XPU.coerce(config['xpu']),
 
@@ -771,35 +779,53 @@ def main():
 
 
 if __name__ == '__main__':
-    """
+    r"""
     CommandLine:
 
         conda install gdal
 
+        # Use the kwcoco-coercable toydata dataset names
         python -m netharn.examples.segmentation \
-                --nice=shapes_demo --datasets=shapes32 \
+                --name=shapes_demo --datasets=shapes32 \
                 --workers=0 --xpu=cpu
+
+        # Or write the toy data explicitly using the kwcoco CLI
+        kwcoco toydata --key shapes32 --dst toy_train.kwcoco.json
+        kwcoco toydata --key shapes8 --dst toy_vali.kwcoco.json
+
+        # Run on the explicit kwcoco files
+        python -m netharn.examples.segmentation \
+            --name=shapes_segmentation_demo \
+            --train_dataset=./toy_train.kwcoco.json \
+            --vali_dataset=./toy_vali.kwcoco.json \
+            --workers=0 --xpu=cpu
+
 
         # You can use MS-COCO files to learn to segment your own data To
         # demonstrate grab the CamVid dataset (the following script also
         # transforms camvid into the MS-COCO format)
 
-        python -m netharn.data.grab_camvid  # Download MS-COCO files
+        python -m kwcoco.data.grab_camvid  # Download MS-COCO files
 
-        python -m netharn.examples.segmentation --workers=4 --xpu=0 --nice=camvid_deeplab \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --schedule=step-90-120 --arch=deeplab --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
+        python -m netharn.examples.segmentation --workers=4 --xpu=cpu --name=camvid_deeplab \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --schedule=step-90-120 --arch=deeplab_v3 --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
 
-        python -m netharn.examples.segmentation --workers=4 --xpu=auto --nice=camvid_psp_wip \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+        python -m netharn.examples.segmentation --workers=4 --xpu=0 --name=camvid_deeplab \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --schedule=step-90-120 --arch=deeplab_v3 --batch_size=8 --lr=1e-5 --input_dims=224,224 --optim=sgd --bstep=8
+
+        python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
             --schedule=step-90-120 --arch=psp --batch_size=6 --lr=1e-3 --input_dims=512,512 --optim=sgd --bstep=1
 
         # Note you would need to change the path to a pretrained network
-        python -m netharn.examples.segmentation --workers=4 --xpu=auto --nice=camvid_psp_wip_fine \
-            --train_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
-            --vali_dataset=$HOME/.cache/netharn/camvid/camvid-master/camvid-train.mscoco.json \
+        python -m netharn.examples.segmentation --workers=4 --xpu=auto --name=camvid_psp_wip_fine \
+            --train_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
+            --vali_dataset=$HOME/.cache/kwcoco/camvid/camvid-master/camvid-train.mscoco.json \
             --pretrained=$HOME/work/sseg/fit/runs/camvid_psp_wip/fowjplca/deploy_SegmentationModel_fowjplca_134_CZARGB.zip \
             --schedule=step-90-120 --arch=psp --batch_size=6 --lr=1e-2 --input_dims=512,512 --optim=sgd --bstep=8
     """
