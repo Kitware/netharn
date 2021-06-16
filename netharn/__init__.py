@@ -4,7 +4,7 @@
 mkinit netharn --noattrs --dry
 mkinit netharn --noattrs
 """
-__version__ = '0.5.16'
+__version__ = '0.5.17'
 
 try:
     # PIL 7.0.0 removed PIL_VERSION, which breaks torchvision, monkey patch it
