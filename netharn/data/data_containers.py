@@ -23,8 +23,13 @@ from netharn.device import DataParallel, DataSerial, XPU
 from torch.nn.parallel._functions import _get_stream
 from torch.nn.parallel._functions import Scatter as OrigScatter
 from torch.nn.parallel._functions import Gather as OrigGather
-from torch._six import container_abcs
-from torch._six import int_classes, string_classes
+try:
+    import collections.abc as container_abcs
+    from six import string_types as string_classes
+    from six import integer_types as int_classes
+except Exception:
+    from torch._six import container_abcs
+    from torch._six import string_classes, int_classes
 default_collate = torch_data.dataloader.default_collate
 
 
