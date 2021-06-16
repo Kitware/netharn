@@ -71,7 +71,7 @@ def parse_version(package):
     Statically parse the version number from __init__.py
 
     CommandLine:
-        python -c "import setup; print(setup.parse_version('ovharn'))"
+        python -c "import setup; print(setup.parse_version('netharn'))"
     """
     from os.path import dirname, join
     import ast

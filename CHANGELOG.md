@@ -6,6 +6,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.16 - Unreleased
 
+### Added
+* decollate batch utility
+
+### Fixed
+* Fixed segmentation, and object detection example
+* Fixed issue with container_abcs
+
 
 ## Version 0.5.15 - Released 2021-01-26
 
