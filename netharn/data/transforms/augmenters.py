@@ -488,6 +488,7 @@ class Resize(augmenter_base.ParamatarizedAugmenter):
                 embed_size: innner w,h of unpadded region
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> # xdoctest: +IGNORE_WHITESPACE
             >>> Resize(None)._letterbox_transform([5, 10], [10, 10])
             (array([2, 0]), array([1., 1.]), array([ 5, 10]))

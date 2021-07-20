@@ -406,11 +406,13 @@ class ClfDataset(torch.utils.data.Dataset):
 
     def _coerce_augmenter(self, augmenter):
         import netharn as nh
+        if not augmenter:
+            augmenter = None
+            return augmenter
+
         import imgaug.augmenters as iaa
         if augmenter is True:
             augmenter = 'simple'
-        if not augmenter:
-            augmenter = None
         elif augmenter == 'simple':
             augmenter = iaa.Sequential([
                 iaa.Crop(percent=(0, .2)),
@@ -611,6 +613,7 @@ class ClfHarn(nh.FitHarn):
             xdoctest -m netharn.examples.classification ClfHarn.on_epoch
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> harn = setup_harn().initialize()
             >>> harn._demo_epoch('vali', max_iter=10)
             >>> harn.on_epoch()

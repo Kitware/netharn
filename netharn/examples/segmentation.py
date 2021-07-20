@@ -10,8 +10,12 @@ import kwimage
 import scriptconfig as scfg
 from torch.nn import functional as F
 
-import imgaug.augmenters as iaa
-import imgaug
+try:
+    import imgaug.augmenters as iaa
+    import imgaug
+except Exception:
+    iaa = None
+    imgaug = None
 
 
 class SegmentationConfig(scfg.Config):
@@ -204,6 +208,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         cidx_segmap = heatmap.data['class_idx']
 
         if self.augmenter:
+            if imgaug is None:
+                raise AssertionError('imgaug is not installed')
             augdet = self.augmenter.to_deterministic()
             imdata = augdet.augment_image(imdata)
             if hasattr(imgaug, 'SegmentationMapsOnImage'):

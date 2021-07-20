@@ -19,7 +19,7 @@ pygtrie >= 2.3.3
 imageio > 2.6.0;python_version > '3.0' 
 imageio < 2.8.0;python_version < '3.0' 
 
-imgaug >= 0.2.6
+# imgaug >= 0.2.6
 # imgaug < 0.3.0;python_version < '3.0' 
 
 # NOTE: in the future kwimage and kwplot may become optional

@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.17 - Unreleased
 
+### Changed
+* Moved imgaug from runtime dependencies to problematic (because of opencv)
 
 ## Version 0.5.16 - Released 2021-06-16
 

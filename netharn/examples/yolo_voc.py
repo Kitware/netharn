@@ -9,7 +9,6 @@ import torch
 import ubelt as ub
 import numpy as np
 import torch.utils.data as torch_data
-import imgaug.augmenters as iaa
 import netharn as nh
 from netharn.models.yolo2 import multiscale_batch_sampler
 from netharn.models.yolo2 import light_yolo
@@ -66,6 +65,7 @@ class YoloVOCDataset(nh.data.voc.VOCDataset):
         self.augmenter = None
 
         if 'train' in split:
+            import imgaug.augmenters as iaa
             augmentors = [
                 # Order used in lightnet is hsv, rc, rf, lb
                 # lb is applied externally to augmenters
