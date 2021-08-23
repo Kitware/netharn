@@ -9,7 +9,7 @@ try:
     from imgaug.parameters import (Uniform, Binomial)
 except Exception:
     import warnings
-    warnings.warn('imgaug is not availble')
+    warnings.warn('imgaug is not availble', DeprecationWarning)
 
 
 def demodata_hsv_image(w=200, h=200):

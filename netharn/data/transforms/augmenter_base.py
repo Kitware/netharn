@@ -6,7 +6,7 @@ try:
     _Augmenter = imgaug.augmenters.Augmenter
 except Exception:
     import warnings
-    warnings.warn('imgaug is not availble')
+    warnings.warn('imgaug is not availble', DeprecationWarning)
     _Augmenter = object
 
 
