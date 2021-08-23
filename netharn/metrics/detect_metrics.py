@@ -223,9 +223,8 @@ class DetectionMetrics(ub.NiceRepr):
                 except ValueError:
                     pass
 
-        from ndsampler.utils import util_futures
         workers = 0
-        jobs = util_futures.JobPool(mode='process', max_workers=workers)
+        jobs = ub.JobPool(mode='process', max_workers=workers)
 
         for gid in ub.ProgIter(gids, desc='submit assign jobs',
                                verbose=verbose):
@@ -597,7 +596,7 @@ class DetectionMetrics(ub.NiceRepr):
                 if True, includes per-class probabilities with predictions
 
         Example:
-            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
             >>> kwargs = {}
             >>> # Seed the RNG
             >>> kwargs['rng'] = 0
@@ -619,7 +618,7 @@ class DetectionMetrics(ub.NiceRepr):
             <Detections(7)>
 
         Example:
-            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
             >>> # Test case with null predicted categories
             >>> dmet = DetectionMetrics.demo(nimgs=30, null_pred=1, nclasses=3,
             >>>                              nboxes=10, n_fp=10, box_noise=0.3,
@@ -641,7 +640,7 @@ class DetectionMetrics(ub.NiceRepr):
         """
         import kwimage
         import kwarray
-        import ndsampler
+        import kwcoco
         # Parse kwargs
         rng = kwarray.ensure_rng(kwargs.get('rng', 0))
         nclasses = kwargs.get('nclasses', 1)
@@ -707,7 +706,7 @@ class DetectionMetrics(ub.NiceRepr):
             if parent_cx > 0:
                 supercategory = 'cat_{}'.format(parent_cx + 1)
                 graph.add_edge(supercategory, node)
-        classes = ndsampler.CategoryTree(graph)
+        classes = kwcoco.CategoryTree(graph)
 
         dmet = cls()
         dmet.classes = classes
