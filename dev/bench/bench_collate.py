@@ -1,7 +1,5 @@
-import itertools as it
 import torch
 import ubelt as ub
-from kwcoco.util.util_json import IndexableWalker
 
 
 class RandomDataset(torch.utils.data.Dataset):
@@ -36,67 +34,8 @@ class RandomDataset(torch.utils.data.Dataset):
         return item
 
 
-def basis_product(basis):
-    """
-    Args:
-        basis (Dict[str, List[T]]): list of values for each axes
-
-    Yields:
-        Dict[str, T] - points in the grid
-
-    Example:
-        >>> basis = {
-        >>>     'arg1': [1, 2, 3],
-        >>>     'arg2': ['A1', 'B1'],
-        >>>     'arg3': [9999, 'Z2'],
-        >>>     'arg4': ['always'],
-        >>> }
-        >>> got = list(basis_product(basis))
-        >>> import ubelt as ub
-        >>> print(ub.repr2(got, nl=-1))
-        [
-            {'arg1': 1, 'arg2': 'A1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 1, 'arg2': 'A1', 'arg3': 'Z2', 'arg4': 'always'},
-            {'arg1': 1, 'arg2': 'B1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 1, 'arg2': 'B1', 'arg3': 'Z2', 'arg4': 'always'},
-            {'arg1': 2, 'arg2': 'A1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 2, 'arg2': 'A1', 'arg3': 'Z2', 'arg4': 'always'},
-            {'arg1': 2, 'arg2': 'B1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 2, 'arg2': 'B1', 'arg3': 'Z2', 'arg4': 'always'},
-            {'arg1': 3, 'arg2': 'A1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 3, 'arg2': 'A1', 'arg3': 'Z2', 'arg4': 'always'},
-            {'arg1': 3, 'arg2': 'B1', 'arg3': 9999, 'arg4': 'always'},
-            {'arg1': 3, 'arg2': 'B1', 'arg3': 'Z2', 'arg4': 'always'}
-        ]
-    """
-    keys = list(basis.keys())
-    for vals in it.product(*basis.values()):
-        kw = ub.dzip(keys, vals)
-        yield kw
-
-
-def compatible(config, func, start=0):
-    """
-    Take only the part of a config dict that can be passed to func as kwargs
-
-    Args:
-        config (dict): a flat configuration dictionary
-        func (Callable): a function or method
-        start (int, default=0): set to 1 if calling with an unbound method
-
-    Returns:
-        dict : a subset of ``config`` that only contains items compatible with
-            the signature of ``func``.
-    """
-    import inspect
-    sig = inspect.signature(func)
-    argnames = list(sig.parameters.keys())[start:]
-    common = ub.dict_isect(config, argnames)
-    return common
-
-
 def nested_move(batch, device):
-    walker = IndexableWalker(batch)
+    walker = ub.IndexableWalker(batch)
     for path, val in walker:
         if isinstance(val, (list, dict)):
             continue
@@ -108,7 +47,7 @@ def nested_move(batch, device):
 
 
 def walk_tensors(nested):
-    walker = IndexableWalker(nested)
+    walker = ub.IndexableWalker(nested)
     for path, val in walker:
         if isinstance(val, torch.Tensor):
             yield path, val
@@ -196,7 +135,7 @@ def main():
         'modes': [None, 8],
     }
 
-    grid = list(basis_product(param_basis))
+    grid = list(ub.named_product(param_basis))
     print('grid = {}'.format(ub.repr2(grid, nl=1)))
 
     collate_lut = {
@@ -213,8 +152,8 @@ def main():
 
         rows.append(params)
         param_subsets = {
-            'dataset': compatible(params, RandomDataset.__init__, start=1),
-            'dataloader': compatible(params, torch.utils.data.DataLoader.__init__, start=1),
+            'dataset': ub.compatible(params, RandomDataset.__init__, start=1),
+            'dataloader': ub.compatible(params, torch.utils.data.DataLoader.__init__, start=1),
             'other': ub.dict_isect(params, {'collate', 'device'})
         }
         print('param_subsets = {}'.format(ub.repr2(param_subsets, nl=1)))

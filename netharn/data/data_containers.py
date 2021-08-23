@@ -193,8 +193,7 @@ class BatchContainer(ub.NiceRepr):
 
     def to(self, device):
         """ inplace move data onto a device """
-        from netharn.util.util_json import IndexableWalker
-        walker = IndexableWalker(self.data)
+        walker = ub.IndexableWalker(self.data)
         for path, val in walker:
             if torch.is_tensor(val):
                 walker[path] = val.to(device)
@@ -425,10 +424,9 @@ def decollate_batch(batch):
         >>> assert (decollated[0]['im'].data == batch_items[0]['im'].data).all()
     """
     import ubelt as ub
-    from kwcoco.util.util_json import IndexableWalker
-    walker = IndexableWalker(batch)
+    walker = ub.IndexableWalker(batch)
     decollated_dict = ub.AutoDict()
-    decollated_walker = IndexableWalker(decollated_dict)
+    decollated_walker = ub.IndexableWalker(decollated_dict)
     for path, batch_val in walker:
         if isinstance(batch_val, BatchContainer):
             for bx, item_val in enumerate(ub.flatten(batch_val.data)):
