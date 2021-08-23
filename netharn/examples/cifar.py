@@ -220,7 +220,7 @@ class CIFAR_FitHarn(nh.FitHarn):
             >>> harn = setup_harn().initialize()
             >>> harn._demo_epoch('vali')
         """
-        from netharn.metrics import clf_report
+        from kwcoco.metrics import clf_report
         dset = harn.datasets[harn.current_tag]
 
         probs = np.vstack(harn._accum_confusion_vectors['probs'])
@@ -230,7 +230,7 @@ class CIFAR_FitHarn(nh.FitHarn):
         # _pred = probs.argmax(axis=1)
         # assert np.all(_pred == y_pred)
 
-        # from netharn.metrics import confusion_vectors
+        # from kwcoco.metrics import confusion_vectors
         # cfsn_vecs = confusion_vectors.ConfusionVectors.from_arrays(
         #     true=y_true, pred=y_pred, probs=probs, classes=dset.classes)
         # report = cfsn_vecs.classification_report()

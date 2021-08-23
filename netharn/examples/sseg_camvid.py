@@ -592,8 +592,9 @@ class SegmentationEvaluator(object):
         valid_true_idx = true_idx[is_valid]
         valid_pred_idx = pred_idx[is_valid]
 
-        cfsn = nh.metrics.confusion_matrix(valid_true_idx, valid_pred_idx,
-                                           labels=evaluator.classes)
+        from kwcoco import metrics
+        cfsn = metrics.confusion_matrix(valid_true_idx, valid_pred_idx,
+                                        labels=evaluator.classes)
 
         is_correct = (valid_pred_idx == valid_true_idx)
 

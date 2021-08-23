@@ -72,7 +72,6 @@ from netharn import fit_harn
 from netharn import hyperparams
 from netharn import initializers
 from netharn import layers
-from netharn import metrics
 from netharn import mixins
 from netharn import models
 from netharn import monitor
@@ -90,7 +89,7 @@ __all__ = ['Criterion', 'Dynamics', 'FitHarn', 'HiddenFields', 'HiddenShapes',
            'ReceptiveFieldFor', 'Scheduler', 'XPU', 'analytic_for', 'api',
            'configure_hacks', 'configure_workdir', 'criterions', 'data',
            'device', 'exceptions', 'fit_harn', 'hyperparams',
-           'initializers', 'layers', 'metrics', 'mixins', 'models', 'monitor',
+           'initializers', 'layers', 'mixins', 'models', 'monitor',
            'optimizers', 'output_shape_for', 'prefit', 'receptive_field_for',
            'schedulers', 'util']
 # </AUTOGEN_INIT>
