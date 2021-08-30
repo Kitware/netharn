@@ -1021,6 +1021,8 @@ def nestshape(data):
         elif hasattr(d, 'items'):
             # hack for dict-like objects
             return ub.odict(sorted([(k, _recurse(v)) for k, v in d.items()]))
+        elif d is None:
+            return None
         else:
             raise TypeError(type(d))
 
