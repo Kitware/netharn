@@ -819,6 +819,7 @@ def configure_hacks(config={}, **kw):
         * cv2 - fix thread count
         * torch sharing strategy
     """
+    import torch
     config = _update_defaults(config, kw)
 
     if config.get('workers', 0) > 0:
@@ -840,7 +841,7 @@ def configure_hacks(config={}, **kw):
         References:
             https://britishgeologicalsurvey.github.io/science/python-forking-vs-spawn/
         """
-        import torch
+        # torch.multiprocessing.get_all_start_methods()
         # torch_multiprocessing.get_context()
         torch.multiprocessing.set_start_method('spawn')
 
