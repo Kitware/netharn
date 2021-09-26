@@ -139,19 +139,25 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         if not augmenter:
             augmenter = None
-        elif augmenter == 'simple':
-            augmenter = iaa.Sequential([
-                iaa.Crop(percent=(0, .2)),
-                iaa.Fliplr(p=.5)
-            ])
-        elif augmenter == 'complex':
-            augmenter = iaa.Sequential([
-                iaa.Sometimes(0.2, nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5)),
-                iaa.Crop(percent=(0, .2)),
-                iaa.Fliplr(p=.5)
-            ])
         else:
-            raise KeyError('Unknown augmentation {!r}'.format(self.augment))
+            if iaa is None:
+                raise NotImplementedError(
+                    'Augmentation requires imgaug, which is deprecated. '
+                    'Need to repackage part of it. '
+                    'Its the only good aug library')
+            if augmenter == 'simple':
+                augmenter = iaa.Sequential([
+                    iaa.Crop(percent=(0, .2)),
+                    iaa.Fliplr(p=.5)
+                ])
+            elif augmenter == 'complex':
+                augmenter = iaa.Sequential([
+                    iaa.Sometimes(0.2, nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5)),
+                    iaa.Crop(percent=(0, .2)),
+                    iaa.Fliplr(p=.5)
+                ])
+            else:
+                raise KeyError('Unknown augmentation {!r}'.format(self.augment))
         return augmenter
 
     def _build_sliders(self, input_dims=(224, 224), input_overlap=0.5):
@@ -796,8 +802,20 @@ if __name__ == '__main__':
                 --workers=0 --xpu=cpu
 
         # Or write the toy data explicitly using the kwcoco CLI
-        kwcoco toydata --key shapes32 --dst toy_train.kwcoco.json
+        kwcoco toydata --key shapes1024 --dst toy_train.kwcoco.json
         kwcoco toydata --key shapes8 --dst toy_vali.kwcoco.json
+
+        # Run on the explicit kwcoco files
+        python -m netharn.examples.segmentation \
+            --name=shapes_segmentation_demo \
+            --train_dataset=./toy_train.kwcoco.json \
+            --vali_dataset=./toy_vali.kwcoco.json \
+            --input_overlap=0.9 \
+            --input_dims=256,256 \
+            --batch_size=8 \
+            --arch=deeplab_v3 \
+            --optim=RAdam \
+            --workers=14 --xpu=0
 
         # Run on the explicit kwcoco files
         python -m netharn.examples.segmentation \
