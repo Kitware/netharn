@@ -438,7 +438,7 @@ class SegmentationHarn(nh.FitHarn):
         batch_imgs = []
 
         for bx in range(min(len(class_true), lim)):
-            orig_img = im[bx].transpose(1, 2, 0)
+            orig_img = im[bx].transpose(1, 2, 0)[..., 0:3]
 
             out_size = class_pred[bx].shape[::-1]
 
@@ -714,6 +714,7 @@ def setup_harn(cmdline=True, **kw):
         #     pass
     else:
         class_weights = None
+    print('class_weights = {!r}'.format(class_weights))
 
     if config['normalize_inputs']:
         stats_dset = torch_datasets['train']

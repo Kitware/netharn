@@ -249,7 +249,7 @@ class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=1000, fully_conv=False,
                  remove_avg_pool_layer=False, output_stride=32,
-                 additional_blocks=0, multi_grid=(1, 1, 1)):
+                 additional_blocks=0, multi_grid=(1, 1, 1), in_channels=3):
 
         # Add additional variables to track
         # output stride. Necessary to achieve
@@ -263,8 +263,8 @@ class ResNet(nn.Module):
         self.inplanes = 64
         self.fully_conv = fully_conv
         super(ResNet, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
-                               bias=False)
+        self.conv1 = nn.Conv2d(in_channels, 64, kernel_size=7, stride=2,
+                               padding=3, bias=False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -452,13 +452,15 @@ def resnet50(pretrained=False, **kwargs):
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
     """
+    import torch_liberator
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         if model.additional_blocks:
-            model.load_state_dict(
-                model_zoo.load_url(model_urls['resnet50']), strict=False)
+            torch_liberator.load_partial_state(
+                model, model_zoo.load_url(model_urls['resnet50']), strict=False)
             return model
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+        torch_liberator.load_partial_state(
+            model, model_zoo.load_url(model_urls['resnet50']))
     return model
 
 
@@ -688,7 +690,8 @@ class PSPNet_Resnet50_8s(layers.AnalyticModule):
         # Load the pretrained weights, remove avg pool
         # layer and get the output stride of 16
         resnet50_8s = resnet50(fully_conv=True, pretrained=True,
-                               output_stride=8, remove_avg_pool_layer=True)
+                               output_stride=8, remove_avg_pool_layer=True,
+                               in_channels=in_channels)
 
         self.psp_head = PSP_head(resnet50_8s.inplanes)
 
