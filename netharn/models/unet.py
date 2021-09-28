@@ -30,7 +30,7 @@ class UNetConvNd(nn.Module):
         if dim == 2:
             kernel_size = (3, 3, 3)
         elif dim == 3:
-            kernel_size = (2, 3, 3)
+            kernel_size = (1, 3, 3)
         else:
             raise NotImplementedError
 

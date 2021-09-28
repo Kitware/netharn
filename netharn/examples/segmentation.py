@@ -46,6 +46,8 @@ class SegmentationConfig(scfg.Config):
         'input_overlap': scfg.Value(0.25, help='amount of overlap when creating a sliding window dataset'),
         'normalize_inputs': scfg.Value(True, help='if True, precompute training mean and std for data whitening'),
 
+        'channels': scfg.Value(None),
+
         'batch_size': scfg.Value(4, help='number of items per batch'),
         'bstep': scfg.Value(4, help='number of batches before a gradient descent step'),
 
@@ -110,7 +112,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         >>>     xdev.InteractiveIter.draw()
     """
     def __init__(self, sampler, input_dims=(224, 224), input_overlap=0.5,
-                 augmenter=False):
+                 augmenter=False, channels=None):
         self.input_dims = None
         self.input_id = None
         self.cid_to_cidx = None
@@ -120,6 +122,12 @@ class SegmentationDataset(torch.utils.data.Dataset):
         self.gid_to_slider = None
         self._gids = None
         self._sliders = None
+
+        if channels is not None:
+            from kwcoco.channel_spec import FusedChannelSpec
+            channels = FusedChannelSpec.coerce(channels)
+
+        self.channels = channels
 
         self.sampler = sampler
 
@@ -204,6 +212,10 @@ class SegmentationDataset(torch.utils.data.Dataset):
         slices = slider[inner]
 
         tr = {'gid': gid, 'slices': slices}
+
+        if self.channels is not None:
+            tr['channels'] = self.channels
+
         sample = self.sampler.load_sample(tr, with_annots=['segmentation'])
 
         imdata = sample['im']
@@ -432,6 +444,9 @@ class SegmentationHarn(nh.FitHarn):
 
             orig_img = cv2.resize(orig_img, tuple(map(int, out_size)))
             orig_img = kwimage.ensure_alpha_channel(orig_img)
+
+            if orig_img.max() > 1:
+                orig_img = kwimage.normalize_intensity(orig_img)
 
             pred_heatmap = kwimage.Heatmap(
                 class_idx=class_pred[bx],
@@ -665,10 +680,14 @@ def setup_harn(cmdline=True, **kw):
         except AttributeError:
             pass
 
+    from kwcoco.channel_spec import FusedChannelSpec
+    channels = FusedChannelSpec.coerce(config['channels']).normalize()
+
     torch_datasets = {
         tag: SegmentationDataset(
             sampler,
             config['input_dims'],
+            channels=channels,
             input_overlap=((tag == 'train') and config['input_overlap']),
             augmenter=((tag == 'train') and config['augmenter']),
         )
@@ -689,7 +708,10 @@ def setup_harn(cmdline=True, **kw):
         class_weights = _precompute_class_weights(dset, mode=mode,
                                                   workers=config['workers'])
         class_weights = torch.FloatTensor(class_weights)
-        class_weights[dset.classes.index('background')] = 0
+        # try:
+        # class_weights[dset.classes.index('background')] = 0
+        # except Exception:
+        #     pass
     else:
         class_weights = None
 
@@ -724,7 +746,7 @@ def setup_harn(cmdline=True, **kw):
         'arch': config['arch'],
         'input_stats': input_stats,
         'classes': torch_datasets['train'].classes.__json__(),
-        'in_channels': 3,
+        'in_channels': channels.numel(),
     })
 
     initializer_ = nh.Initializer.coerce(config)
