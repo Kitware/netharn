@@ -4,6 +4,12 @@ NetHarn - a PyTorch Network Harness
 
 |GitlabCIPipeline| |GitlabCICoverage| |Pypi| |Downloads| 
 
+
+UPDATE 2021-10-05: Netharn as a Training loop will no longer be maintained. Use
+pytorch-lightning instead. This library may slowly morph into an extension of
+lightning.
+
+
 The main webpage for this project is: https://gitlab.kitware.com/computer-vision/netharn
 
 If you want a framework for your pytorch training loop that
