@@ -105,7 +105,7 @@ stages:
     script: 
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
-        - source source dev/secrets_configuration.sh
+        - source dev/secrets_configuration.sh
         # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
         - CI_SECRET=${!VARNAME_CI_SECRET}
         - echo "GPG_KEYID = $GPG_KEYID"
@@ -150,7 +150,7 @@ stages:
         - export GPG_EXECUTABLE=gpg
         - export GPG_KEYID=$(cat dev/public_gpg_key)
         - echo "GPG_KEYID = $GPG_KEYID"
-        - source source dev/secrets_configuration.sh
+        - source dev/secrets_configuration.sh
         # note the variable pointed to by VARNAME_CI_SECRET is a protected variables only available on master and release branch
         - CI_SECRET=${!VARNAME_CI_SECRET}
         - $GPG_EXECUTABLE --version
