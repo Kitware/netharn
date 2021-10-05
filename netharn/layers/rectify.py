@@ -79,7 +79,7 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
         >>> rectify_normalizer(8, {'type': 'batch'})
         BatchNorm2d(8, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
         >>> rectify_normalizer(8, 'group')
-        GroupNorm(8, 8, eps=1e-05, affine=True)
+        GroupNorm(4, 8, eps=1e-05, affine=True)
         >>> rectify_normalizer(8, {'type': 'group', 'num_groups': 2})
         GroupNorm(2, 8, eps=1e-05, affine=True)
         >>> rectify_normalizer(8, dim=3)

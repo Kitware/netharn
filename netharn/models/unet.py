@@ -6,14 +6,22 @@ import math
 import torch
 import torch.nn.functional as F
 
-__all__ = ['UNet']
+# __all__ = ['UNet']
 
 
 class UNetConvNd(nn.Module):
     """
     Example:
         >>> from netharn.models.unet import UNetConvNd  # NOQA
-        >>> UNetConvNd(1, 1, False, dim=3)
+        >>> self = UNetConvNd(1, 1, False, dim=2)
+        >>> inputs = torch.rand(1, 1, 8, 8)
+        >>> self.forward(inputs)
+
+    Example:
+        >>> from netharn.models.unet import UNetConvNd  # NOQA
+        >>> self = UNetConvNd(1, 1, False, dim=3)
+        >>> inputs = torch.rand(1, 1, 1, 8, 8)
+        >>> self.forward(inputs)
     """
     def __init__(self, in_size, out_size, is_batchnorm, nonlinearity='relu', dim=2):
         # import netharn as nh
@@ -28,7 +36,7 @@ class UNetConvNd(nn.Module):
         ConvNd = rectify.rectify_conv(dim=dim)
 
         if dim == 2:
-            kernel_size = (3, 3, 3)
+            kernel_size = (3, 3)
         elif dim == 3:
             kernel_size = (1, 3, 3)
         else:
@@ -54,10 +62,11 @@ class UNetConvNd(nn.Module):
         return outputs
 
     def output_shape_for(self, input_shape, math=math):
-        import netharn as nh
-        shape = nh.OutputShapeFor(self.conv1[0])(input_shape)
-        shape = nh.OutputShapeFor(self.conv2[0])(shape)
-        output_shape = shape
+        from netharn.analytic.output_shape_for import HiddenShapes, OutputShape, OutputShapeFor
+        hidden = HiddenShapes()
+        hidden['conv1'] = shape = OutputShapeFor(self.conv1[0])(input_shape)
+        hidden['conv2'] = shape = OutputShapeFor(self.conv2[0])(shape)
+        output_shape = OutputShape.coerce(shape, hidden)
         return output_shape
 
 
@@ -93,6 +102,7 @@ class UNetConvNd(nn.Module):
 class PadToAgree(nn.Module):
     """
     Example:
+        >>> from netharn.models.unet import *  # NOQA
         >>> from netharn.models.unet import PadToAgree  # NOQA
         >>> self = PadToAgree()
         >>> input_shape1 = (2, 3, 5, 6, 8)
@@ -112,6 +122,7 @@ class PadToAgree(nn.Module):
             xdoctest -m ~/code/netharn/netharn/models/unet.py PadToAgree.padding
 
         Example:
+            >>> from netharn.models.unet import *  # NOQA
             >>> self = PadToAgree()
             >>> input_shape1 = (1, 32, 37, 52)
             >>> input_shape2 = (1, 32, 28, 44)
@@ -132,7 +143,7 @@ class PadToAgree(nn.Module):
                 int(math.floor(half_offw)),
                 int(math.ceil(half_offw)),
             ])
-        if len(input_shape1) == 5:
+        elif len(input_shape1) == 5:
             # padding = 2 * [offw // 2, offh // 2]
             have_t, have_w, have_h = input_shape1[-3:]
             want_t, want_w, want_h = input_shape2[-3:]
@@ -187,11 +198,13 @@ class UNetUp(nn.Module):
         if dim == 2:
             kernel_size = 2
             stride = 2
-            ConvTransposeNd = nn.ConvTranspose3d
-        else:
+            ConvTransposeNd = nn.ConvTranspose2d
+        elif dim == 3:
             ConvTransposeNd = nn.ConvTranspose3d
             kernel_size = (2, 2, 2)
             stride = (2, 2, 1)
+        else:
+            raise NotImplementedError
         if is_deconv:
             self.up = ConvTransposeNd(in_size, out_size, kernel_size=kernel_size, stride=stride)
         else:
@@ -204,21 +217,28 @@ class UNetUp(nn.Module):
     def output_shape_for(self, input1_shape, input2_shape):
         """
         Example:
+            >>> import ubelt as ub
+            >>> from netharn.models.unet import *  # NOQA
             >>> self = UNetUp(256, 128)
             >>> input1_shape = [4, 128, 24, 24]
             >>> input2_shape = [4, 256, 8, 8]
             >>> output_shape = self.output_shape_for(input1_shape, input2_shape)
-            >>> output_shape
-            (4, 128, 12, 12)
+            >>> print('hidden_shapes = ' + ub.repr2(output_shape.hidden.shallow(100), nl=-1))
+            ...
+            >>> print('output_shape = {!r}'.format(output_shape))
+            output_shape = (4, 128, 12, 12)
             >>> inputs1 = (torch.rand(input1_shape))
             >>> inputs2 = (torch.rand(input2_shape))
-            >>> assert self.forward(inputs1, inputs2).shape == output_shape
+            >>> out = self.forward(inputs1, inputs2)
+            >>> assert out.shape == output_shape
         """
-        from netharn import OutputShapeFor
-        output2_shape = OutputShapeFor(self.up)(input2_shape)
-        output1_shape = OutputShapeFor(self.pad)(input1_shape, output2_shape)
-        cat_shape     = OutputShapeFor(torch.cat)([output1_shape, output2_shape], 1)
-        output_shape  = OutputShapeFor(self.conv)(cat_shape)
+        from netharn.analytic.output_shape_for import HiddenShapes, OutputShape, OutputShapeFor
+        hidden = HiddenShapes()
+        hidden['up'] = output2_shape = OutputShapeFor(self.up)(input2_shape)
+        hidden['pad'] = output1_shape = OutputShapeFor(self.pad)(input1_shape, output2_shape)
+        hidden['cat'] = cat_shape = OutputShapeFor(torch.cat)([output1_shape, output2_shape], 1)
+        hidden['conv'] = final  = OutputShapeFor(self.conv)(cat_shape)
+        output_shape = OutputShape.coerce(final, hidden)
         return output_shape
 
     def forward(self, inputs1, inputs2):

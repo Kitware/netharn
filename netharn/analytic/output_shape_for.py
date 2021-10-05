@@ -189,11 +189,11 @@ class OutputShape(analytic_for.Output):
     @classmethod
     def template(cls, type):
         """ Get a specific template for a subclass type """
-        if type is tuple:
+        if issubclass(type, tuple):
             return OutputShapeTuple
-        elif type is OrderedDict:
+        elif issubclass(type, OrderedDict):
             return OutputShapeDict
-        elif type is dict:
+        elif issubclass(type, dict):
             return OutputShapeDict
         else:
             raise TypeError(type)
@@ -219,7 +219,15 @@ class OutputShape(analytic_for.Output):
 
 
 class OutputShapeTuple(tuple, OutputShape):
-    """ OutputShape templated as a tuple """
+    """
+    OutputShape templated as a tuple
+
+    Example:
+        >>> from netharn.analytic.output_shape_for import *  # NOQA
+        >>> self = OutputShapeTuple((1, 2, 3))
+        >>> print(self)
+        (1, 2, 3)
+    """
     def __new__(cls, data=None, hidden=None):
         # tuple subclass is a bit weird
         if data is None:
