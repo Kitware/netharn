@@ -6,7 +6,7 @@ try:
     _Augmenter = imgaug.augmenters.Augmenter
 except Exception:
     import warnings
-    warnings.warn('imgaug is not availble')
+    warnings.warn('imgaug is not availble', DeprecationWarning)
     _Augmenter = object
 
 
@@ -69,6 +69,7 @@ class ParamatarizedAugmenter(_Augmenter):
             - [ ] submit a PR to imgaug that registers parameters with classes
 
         Example:
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> from netharn.data.transforms.augmenter_base import *
             >>> import imgaug.augmenters as iaa
             >>> import imgaug
@@ -130,6 +131,7 @@ def imgaug_json_id(aug):
     Creates a json-like encoding that represents an imgaug augmentor
 
     Example:
+        >>> # xdoctest: +REQUIRES(module:imgaug)
         >>> import imgaug.augmenters as iaa
         >>> import imgaug
         >>> import netharn as nh

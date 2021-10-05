@@ -9,7 +9,6 @@ import torch
 import ubelt as ub
 import numpy as np
 import torch.utils.data as torch_data
-import imgaug.augmenters as iaa
 import netharn as nh
 from netharn.models.yolo2 import multiscale_batch_sampler
 from netharn.models.yolo2 import light_yolo
@@ -66,6 +65,7 @@ class YoloVOCDataset(nh.data.voc.VOCDataset):
         self.augmenter = None
 
         if 'train' in split:
+            import imgaug.augmenters as iaa
             augmentors = [
                 # Order used in lightnet is hsv, rc, rf, lb
                 # lb is applied externally to augmenters
@@ -276,13 +276,14 @@ class YoloHarn(nh.FitHarn):
     def __init__(harn, **kw):
         super(YoloHarn, harn).__init__(**kw)
         # Dictionary of detection metrics
-        harn.dmets = {}  # Dict[str, nh.metrics.DetectionMetrics]
+        harn.dmets = {}  # Dict[str, kwcoco.metrics.DetectionMetrics]
         harn.chosen_indices = {}
 
     def after_initialize(harn):
+        import kwcoco
         # Prepare structures we will use to measure and quantify quality
         for tag, voc_dset in harn.datasets.items():
-            dmet = nh.metrics.DetectionMetrics()
+            dmet = kwcoco.metrics.DetectionMetrics()
             dmet._pred_aidbase = getattr(dmet, '_pred_aidbase', 1)
             dmet._true_aidbase = getattr(dmet, '_true_aidbase', 1)
             harn.dmets[tag] = dmet

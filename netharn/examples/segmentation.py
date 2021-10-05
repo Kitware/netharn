@@ -10,8 +10,12 @@ import kwimage
 import scriptconfig as scfg
 from torch.nn import functional as F
 
-import imgaug.augmenters as iaa
-import imgaug
+try:
+    import imgaug.augmenters as iaa
+    import imgaug
+except Exception:
+    iaa = None
+    imgaug = None
 
 
 class SegmentationConfig(scfg.Config):
@@ -41,6 +45,8 @@ class SegmentationConfig(scfg.Config):
         'input_dims': scfg.Value((224, 224), help='Window size to input to the network'),
         'input_overlap': scfg.Value(0.25, help='amount of overlap when creating a sliding window dataset'),
         'normalize_inputs': scfg.Value(True, help='if True, precompute training mean and std for data whitening'),
+
+        'channels': scfg.Value(None),
 
         'batch_size': scfg.Value(4, help='number of items per batch'),
         'bstep': scfg.Value(4, help='number of batches before a gradient descent step'),
@@ -106,7 +112,7 @@ class SegmentationDataset(torch.utils.data.Dataset):
         >>>     xdev.InteractiveIter.draw()
     """
     def __init__(self, sampler, input_dims=(224, 224), input_overlap=0.5,
-                 augmenter=False):
+                 augmenter=False, channels=None):
         self.input_dims = None
         self.input_id = None
         self.cid_to_cidx = None
@@ -116,6 +122,12 @@ class SegmentationDataset(torch.utils.data.Dataset):
         self.gid_to_slider = None
         self._gids = None
         self._sliders = None
+
+        if channels is not None:
+            from kwcoco.channel_spec import FusedChannelSpec
+            channels = FusedChannelSpec.coerce(channels)
+
+        self.channels = channels
 
         self.sampler = sampler
 
@@ -135,19 +147,25 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         if not augmenter:
             augmenter = None
-        elif augmenter == 'simple':
-            augmenter = iaa.Sequential([
-                iaa.Crop(percent=(0, .2)),
-                iaa.Fliplr(p=.5)
-            ])
-        elif augmenter == 'complex':
-            augmenter = iaa.Sequential([
-                iaa.Sometimes(0.2, nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5)),
-                iaa.Crop(percent=(0, .2)),
-                iaa.Fliplr(p=.5)
-            ])
         else:
-            raise KeyError('Unknown augmentation {!r}'.format(self.augment))
+            if iaa is None:
+                raise NotImplementedError(
+                    'Augmentation requires imgaug, which is deprecated. '
+                    'Need to repackage part of it. '
+                    'Its the only good aug library')
+            if augmenter == 'simple':
+                augmenter = iaa.Sequential([
+                    iaa.Crop(percent=(0, .2)),
+                    iaa.Fliplr(p=.5)
+                ])
+            elif augmenter == 'complex':
+                augmenter = iaa.Sequential([
+                    iaa.Sometimes(0.2, nh.data.transforms.HSVShift(hue=0.1, sat=1.5, val=1.5)),
+                    iaa.Crop(percent=(0, .2)),
+                    iaa.Fliplr(p=.5)
+                ])
+            else:
+                raise KeyError('Unknown augmentation {!r}'.format(self.augment))
         return augmenter
 
     def _build_sliders(self, input_dims=(224, 224), input_overlap=0.5):
@@ -194,6 +212,10 @@ class SegmentationDataset(torch.utils.data.Dataset):
         slices = slider[inner]
 
         tr = {'gid': gid, 'slices': slices}
+
+        if self.channels is not None:
+            tr['channels'] = self.channels
+
         sample = self.sampler.load_sample(tr, with_annots=['segmentation'])
 
         imdata = sample['im']
@@ -204,6 +226,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         cidx_segmap = heatmap.data['class_idx']
 
         if self.augmenter:
+            if imgaug is None:
+                raise AssertionError('imgaug is not installed')
             augdet = self.augmenter.to_deterministic()
             imdata = augdet.augment_image(imdata)
             if hasattr(imgaug, 'SegmentationMapsOnImage'):
@@ -414,12 +438,15 @@ class SegmentationHarn(nh.FitHarn):
         batch_imgs = []
 
         for bx in range(min(len(class_true), lim)):
-            orig_img = im[bx].transpose(1, 2, 0)
+            orig_img = im[bx].transpose(1, 2, 0)[..., 0:3]
 
             out_size = class_pred[bx].shape[::-1]
 
             orig_img = cv2.resize(orig_img, tuple(map(int, out_size)))
             orig_img = kwimage.ensure_alpha_channel(orig_img)
+
+            if orig_img.max() > 1:
+                orig_img = kwimage.normalize_intensity(orig_img)
 
             pred_heatmap = kwimage.Heatmap(
                 class_idx=class_pred[bx],
@@ -653,10 +680,14 @@ def setup_harn(cmdline=True, **kw):
         except AttributeError:
             pass
 
+    from kwcoco.channel_spec import FusedChannelSpec
+    channels = FusedChannelSpec.coerce(config['channels']).normalize()
+
     torch_datasets = {
         tag: SegmentationDataset(
             sampler,
             config['input_dims'],
+            channels=channels,
             input_overlap=((tag == 'train') and config['input_overlap']),
             augmenter=((tag == 'train') and config['augmenter']),
         )
@@ -677,9 +708,13 @@ def setup_harn(cmdline=True, **kw):
         class_weights = _precompute_class_weights(dset, mode=mode,
                                                   workers=config['workers'])
         class_weights = torch.FloatTensor(class_weights)
-        class_weights[dset.classes.index('background')] = 0
+        # try:
+        # class_weights[dset.classes.index('background')] = 0
+        # except Exception:
+        #     pass
     else:
         class_weights = None
+    print('class_weights = {!r}'.format(class_weights))
 
     if config['normalize_inputs']:
         stats_dset = torch_datasets['train']
@@ -712,7 +747,7 @@ def setup_harn(cmdline=True, **kw):
         'arch': config['arch'],
         'input_stats': input_stats,
         'classes': torch_datasets['train'].classes.__json__(),
-        'in_channels': 3,
+        'in_channels': channels.numel(),
     })
 
     initializer_ = nh.Initializer.coerce(config)
@@ -790,8 +825,20 @@ if __name__ == '__main__':
                 --workers=0 --xpu=cpu
 
         # Or write the toy data explicitly using the kwcoco CLI
-        kwcoco toydata --key shapes32 --dst toy_train.kwcoco.json
+        kwcoco toydata --key shapes1024 --dst toy_train.kwcoco.json
         kwcoco toydata --key shapes8 --dst toy_vali.kwcoco.json
+
+        # Run on the explicit kwcoco files
+        python -m netharn.examples.segmentation \
+            --name=shapes_segmentation_demo \
+            --train_dataset=./toy_train.kwcoco.json \
+            --vali_dataset=./toy_vali.kwcoco.json \
+            --input_overlap=0.9 \
+            --input_dims=256,256 \
+            --batch_size=8 \
+            --arch=deeplab_v3 \
+            --optim=RAdam \
+            --workers=14 --xpu=0
 
         # Run on the explicit kwcoco files
         python -m netharn.examples.segmentation \

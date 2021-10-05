@@ -6,31 +6,55 @@ import math
 import torch
 import torch.nn.functional as F
 
-__all__ = ['UNet']
+# __all__ = ['UNet']
 
 
-class UNetConv2(nn.Module):
-    def __init__(self, in_size, out_size, is_batchnorm, nonlinearity='relu'):
-        super(UNetConv2, self).__init__()
+class UNetConvNd(nn.Module):
+    """
+    Example:
+        >>> from netharn.models.unet import UNetConvNd  # NOQA
+        >>> self = UNetConvNd(1, 1, False, dim=2)
+        >>> inputs = torch.rand(1, 1, 8, 8)
+        >>> self.forward(inputs)
+
+    Example:
+        >>> from netharn.models.unet import UNetConvNd  # NOQA
+        >>> self = UNetConvNd(1, 1, False, dim=3)
+        >>> inputs = torch.rand(1, 1, 1, 8, 8)
+        >>> self.forward(inputs)
+    """
+    def __init__(self, in_size, out_size, is_batchnorm, nonlinearity='relu', dim=2):
+        # import netharn as nh
+        from netharn.layers import rectify
+        super(UNetConvNd, self).__init__()
 
         if nonlinearity == 'relu':
             nonlinearity = functools.partial(nn.ReLU, inplace=False)
         elif nonlinearity == 'leaky_relu':
             nonlinearity = functools.partial(nn.LeakyReLU, inplace=False)
 
-        conv2d_1 = nn.Conv2d(in_size, out_size, kernel_size=3, stride=1,
-                             padding=0)
-        conv2d_2 = nn.Conv2d(out_size, out_size, kernel_size=3, stride=1,
-                             padding=0)
+        ConvNd = rectify.rectify_conv(dim=dim)
+
+        if dim == 2:
+            kernel_size = (3, 3)
+        elif dim == 3:
+            kernel_size = (1, 3, 3)
+        else:
+            raise NotImplementedError
+
+        conv_1 = ConvNd(in_size, out_size, kernel_size=kernel_size, stride=1,
+                        padding=0)
+        conv_2 = ConvNd(out_size, out_size, kernel_size=kernel_size, stride=1,
+                        padding=0)
 
         if is_batchnorm:
-            self.conv1 = nn.Sequential(conv2d_1, nn.BatchNorm2d(out_size),
+            self.conv1 = nn.Sequential(conv_1, nn.BatchNorm2d(out_size),
                                        nonlinearity(),)
-            self.conv2 = nn.Sequential(conv2d_2, nn.BatchNorm2d(out_size),
+            self.conv2 = nn.Sequential(conv_2, nn.BatchNorm2d(out_size),
                                        nonlinearity(),)
         else:
-            self.conv1 = nn.Sequential(conv2d_1, nonlinearity(),)
-            self.conv2 = nn.Sequential(conv2d_2, nonlinearity(),)
+            self.conv1 = nn.Sequential(conv_1, nonlinearity(),)
+            self.conv2 = nn.Sequential(conv_2, nonlinearity(),)
 
     def forward(self, inputs):
         outputs = self.conv1(inputs)
@@ -38,10 +62,11 @@ class UNetConv2(nn.Module):
         return outputs
 
     def output_shape_for(self, input_shape, math=math):
-        import netharn as nh
-        shape = nh.OutputShapeFor(self.conv1[0])(input_shape)
-        shape = nh.OutputShapeFor(self.conv2[0])(shape)
-        output_shape = shape
+        from netharn.analytic.output_shape_for import HiddenShapes, OutputShape, OutputShapeFor
+        hidden = HiddenShapes()
+        hidden['conv1'] = shape = OutputShapeFor(self.conv1[0])(input_shape)
+        hidden['conv2'] = shape = OutputShapeFor(self.conv2[0])(shape)
+        output_shape = OutputShape.coerce(shape, hidden)
         return output_shape
 
 
@@ -75,6 +100,19 @@ class UNetConv2(nn.Module):
 
 
 class PadToAgree(nn.Module):
+    """
+    Example:
+        >>> from netharn.models.unet import *  # NOQA
+        >>> from netharn.models.unet import PadToAgree  # NOQA
+        >>> self = PadToAgree()
+        >>> input_shape1 = (2, 3, 5, 6, 8)
+        >>> input_shape2 = (2, 3, 5, 7, 11)
+        >>> self.padding(input_shape1, input_shape2)
+        >>> inputs1 = torch.rand(*input_shape1)
+        >>> inputs2 = torch.rand(*input_shape2)
+        >>> self(inputs1, inputs2)
+
+    """
     def __init__(self):
         super(PadToAgree, self).__init__()
 
@@ -84,74 +122,123 @@ class PadToAgree(nn.Module):
             xdoctest -m ~/code/netharn/netharn/models/unet.py PadToAgree.padding
 
         Example:
+            >>> from netharn.models.unet import *  # NOQA
             >>> self = PadToAgree()
             >>> input_shape1 = (1, 32, 37, 52)
             >>> input_shape2 = (1, 32, 28, 44)
             >>> self.padding(input_shape1, input_shape2)
             (-4, -4, -5, -4)
         """
-        have_w, have_h = input_shape1[-2:]
-        want_w, want_h = input_shape2[-2:]
 
-        half_offw = (want_w - have_w) / 2
-        half_offh = (want_h - have_h) / 2
-        # padding = 2 * [offw // 2, offh // 2]
+        if len(input_shape1) == 4:
+            # padding = 2 * [offw // 2, offh // 2]
+            have_w, have_h = input_shape1[-2:]
+            want_w, want_h = input_shape2[-2:]
+            half_offw = (want_w - have_w) / 2
+            half_offh = (want_h - have_h) / 2
+            padding = tuple([
+                # Padding starts from the final dimension and then move backwards.
+                int(math.floor(half_offh)),
+                int(math.ceil(half_offh)),
+                int(math.floor(half_offw)),
+                int(math.ceil(half_offw)),
+            ])
+        elif len(input_shape1) == 5:
+            # padding = 2 * [offw // 2, offh // 2]
+            have_t, have_w, have_h = input_shape1[-3:]
+            want_t, want_w, want_h = input_shape2[-3:]
+            half_offw = (want_w - have_w) / 2
+            half_offh = (want_h - have_h) / 2
+            half_offt = (want_t - have_t) / 2
+            padding = tuple([
+                # Padding starts from the final dimension and then move backwards.
+                int(math.floor(half_offw)),
+                int(math.ceil(half_offw)),
+                int(math.floor(half_offh)),
+                int(math.ceil(half_offh)),
+                int(math.floor(half_offt)),
+                int(math.ceil(half_offt)),
+            ])
+        else:
+            raise NotImplementedError
 
-        padding = tuple([
-            # Padding starts from the final dimension and then move backwards.
-            int(math.floor(half_offh)),
-            int(math.ceil(half_offh)),
-            int(math.floor(half_offw)),
-            int(math.ceil(half_offw)),
-        ])
         return padding
 
     def forward(self, inputs1, inputs2):
-        input_shape1 = inputs1.size()
-        input_shape2 = inputs2.size()
+        input_shape1 = inputs1.shape
+        input_shape2 = inputs2.shape
         padding = self.padding(input_shape1, input_shape2)
 
         outputs1 = F.pad(inputs1, padding)
         return outputs1
 
     def output_shape_for(self, input_shape1, input_shape2):
-        N1, C1, W1, H1 = input_shape1
-        N2, C2, W2, H2 = input_shape2
-        output_shape = (N1, C1, W2, H2)
+        N1, C1, *DIMS1 = input_shape1
+        N2, C2, *DIMS2 = input_shape2
+        output_shape = (N1, C1, *DIMS2)
         return output_shape
 
 
 class UNetUp(nn.Module):
     """
+    Example:
+        >>> from netharn.models.unet import UNetUp
+        >>> self = UNetUp(6, 3, is_deconv=False, dim=3)
+        >>> input_shape1 = (B, C, T, H, W) = 1, 3, 2, 8, 8
+        >>> input_shape2 = (B, C, T, H *  2, W * 2)
+        >>> inputs1 = torch.rand(*input_shape1)
+        >>> inputs2 = torch.rand(*input_shape2)
+        >>> out = self.forward(inputs1, inputs2)
+        >>> out.shape
+
     """
-    def __init__(self, in_size, out_size, is_deconv=True, nonlinearity='relu'):
+    def __init__(self, in_size, out_size, is_deconv=True, nonlinearity='relu',
+                 dim=2):
         super(UNetUp, self).__init__()
-        if is_deconv:
-            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=2, stride=2)
+        if dim == 2:
+            kernel_size = 2
+            stride = 2
+            ConvTransposeNd = nn.ConvTranspose2d
+        elif dim == 3:
+            ConvTransposeNd = nn.ConvTranspose3d
+            kernel_size = (2, 2, 2)
+            stride = (2, 2, 1)
         else:
-            self.up = nn.UpsamplingBilinear2d(scale_factor=2)
+            raise NotImplementedError
+        if is_deconv:
+            self.up = ConvTransposeNd(in_size, out_size, kernel_size=kernel_size, stride=stride)
+        else:
+            self.up = nn.Upsample(scale_factor=2)
         self.pad = PadToAgree()
-        self.conv = UNetConv2(in_size, out_size, is_batchnorm=False,
-                              nonlinearity=nonlinearity)
+        self.dim = dim
+        self.conv = UNetConvNd(in_size, out_size, is_batchnorm=False,
+                               nonlinearity=nonlinearity, dim=dim)
 
     def output_shape_for(self, input1_shape, input2_shape):
         """
         Example:
+            >>> import ubelt as ub
+            >>> from netharn.models.unet import *  # NOQA
             >>> self = UNetUp(256, 128)
             >>> input1_shape = [4, 128, 24, 24]
             >>> input2_shape = [4, 256, 8, 8]
             >>> output_shape = self.output_shape_for(input1_shape, input2_shape)
-            >>> output_shape
-            (4, 128, 12, 12)
+            >>> print('hidden_shapes = ' + ub.repr2(output_shape.hidden.shallow(100), nl=-1))
+            ...
+            >>> print('output_shape = {!r}'.format(output_shape))
+            output_shape = (4, 128, 12, 12)
             >>> inputs1 = (torch.rand(input1_shape))
             >>> inputs2 = (torch.rand(input2_shape))
-            >>> assert self.forward(inputs1, inputs2).shape == output_shape
+            >>> out = self.forward(inputs1, inputs2)
+            >>> assert out.shape == output_shape
         """
-        from netharn import OutputShapeFor
-        output2_shape = OutputShapeFor(self.up)(input2_shape)
-        output1_shape = OutputShapeFor(self.pad)(input1_shape, output2_shape)
-        cat_shape     = OutputShapeFor(torch.cat)([output1_shape, output2_shape], 1)
-        output_shape  = OutputShapeFor(self.conv)(cat_shape)
+        from netharn.analytic.output_shape_for import HiddenShapes, OutputShape, OutputShapeFor
+        hidden = HiddenShapes()
+        hidden['up'] = output2_shape = OutputShapeFor(self.up)(input2_shape)
+        hidden['pad'] = output1_shape = OutputShapeFor(self.pad)(input1_shape, output2_shape)
+        hidden['cat'] = cat_shape = OutputShapeFor(torch.cat)([output1_shape, output2_shape], 1)
+        hidden['conv'] = final  = OutputShapeFor(self.conv)(cat_shape)
+        output_shape = OutputShape.coerce(final, hidden)
         return output_shape
 
     def forward(self, inputs1, inputs2):
@@ -171,7 +258,8 @@ class UNetUp(nn.Module):
         outputs2 = self.up(inputs2)
         outputs1 = self.pad(inputs1, outputs2)
         outputs_cat = torch.cat([outputs1, outputs2], 1)
-        return self.conv(outputs_cat)
+        out = self.conv(outputs_cat)
+        return out
 
 import netharn as nh  # NOQA
 
@@ -184,7 +272,7 @@ class UNet(nh.layers.Module):
     dims, so the input should be mirrored with
 
     Example:
-        >>> # xdoctest: +REQUIRES(--slow,module:ndsampler)
+        >>> # xdoctest: +REQUIRES(--slow,module:kwcoco)
         >>> import numpy as np
         >>> B, C, W, H = (4, 3, 256, 256)
         >>> B, C, W, H = (4, 3, 572, 572)
@@ -198,7 +286,7 @@ class UNet(nh.layers.Module):
         >>> print(np.array(inputs.size()) - np.array(outputs.size()))
 
     Example:
-        >>> # xdoctest: +REQUIRES(--slow,module:ndsampler)
+        >>> # xdoctest: +REQUIRES(--slow,module:kwcoco)
         >>> import numpy as np
         >>> B, C, W, H = (4, 5, 480, 360)
         >>> n_classes = 11
@@ -209,13 +297,31 @@ class UNet(nh.layers.Module):
         >>> print('inputs.size() = {!r}'.format(inputs.size()))
         >>> print('outputs.size() = {!r}'.format(outputs.size()))
         >>> print(np.array(inputs.size()) - np.array(outputs.size()))
+
+    Example:
+        >>> # xdoctest: +REQUIRES(--slow,module:kwcoco)
+        >>> from netharn.models.unet import *  # NOQA
+        >>> import numpy as np
+        >>> B, C, T, W, H = (4, 3, 2, 480, 360)
+        >>> n_classes = 11
+        >>> inputs = (torch.rand(B, C, T, W, H))
+        >>> labels = ((torch.rand(B, T, W, H) * n_classes).long())
+        >>> self = UNet(in_channels=C, classes=n_classes, dim=3)
+        >>> outputs = self.forward(inputs)['class_energy']
+        >>> print('inputs.size() = {!r}'.format(inputs.size()))
+        >>> print('outputs.size() = {!r}'.format(outputs.size()))
+        >>> print(np.array(inputs.size()) - np.array(outputs.size()))
     """
     def __init__(self, feature_scale=4, classes=21, is_deconv=True,
-                 in_channels=3, is_batchnorm=True, nonlinearity='relu'):
+                 in_channels=3, is_batchnorm=True, nonlinearity='relu', dim=2):
         super(UNet, self).__init__()
+        import kwcoco
+        from netharn.layers import rectify
 
-        import ndsampler
-        self.classes = ndsampler.CategoryTree.coerce(classes)
+        MaxPoolNd = rectify.rectify_maxpool(dim=dim)
+        ConvNd = rectify.rectify_conv(dim=dim)
+
+        self.classes = kwcoco.CategoryTree.coerce(classes)
         n_classes = len(self.classes)
 
         self.is_deconv = is_deconv
@@ -228,28 +334,36 @@ class UNet(nh.layers.Module):
         filters = [int(x // self.feature_scale) for x in filters]
 
         # downsampling
-        self.conv1 = UNetConv2(self.in_channels, filters[0], self.is_batchnorm, self.nonlinearity)
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
-        self.conv2 = UNetConv2(filters[0], filters[1], self.is_batchnorm, self.nonlinearity)
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2)
+        if dim == 2:
+            kernel_size = (2, 2)
+        elif dim == 3:
+            kernel_size = (2, 2, 1)
+        else:
+            raise NotImplementedError
 
-        self.conv3 = UNetConv2(filters[1], filters[2], self.is_batchnorm, self.nonlinearity)
-        self.maxpool3 = nn.MaxPool2d(kernel_size=2)
+        self.conv1 = UNetConvNd(self.in_channels, filters[0], self.is_batchnorm, self.nonlinearity, dim=dim)
+        self.maxpool1 = MaxPoolNd(kernel_size=kernel_size)
 
-        self.conv4 = UNetConv2(filters[2], filters[3], self.is_batchnorm, self.nonlinearity)
-        self.maxpool4 = nn.MaxPool2d(kernel_size=2)
+        self.conv2 = UNetConvNd(filters[0], filters[1], self.is_batchnorm, self.nonlinearity, dim=dim)
+        self.maxpool2 = MaxPoolNd(kernel_size=kernel_size)
 
-        self.center = UNetConv2(filters[3], filters[4], self.is_batchnorm, self.nonlinearity)
+        self.conv3 = UNetConvNd(filters[1], filters[2], self.is_batchnorm, self.nonlinearity, dim=dim)
+        self.maxpool3 = MaxPoolNd(kernel_size=kernel_size)
+
+        self.conv4 = UNetConvNd(filters[2], filters[3], self.is_batchnorm, self.nonlinearity, dim=dim)
+        self.maxpool4 = MaxPoolNd(kernel_size=kernel_size)
+
+        self.center = UNetConvNd(filters[3], filters[4], self.is_batchnorm, self.nonlinearity, dim=dim)
 
         # upsampling
-        self.up_concat4 = UNetUp(filters[4], filters[3], self.is_deconv, self.nonlinearity)
-        self.up_concat3 = UNetUp(filters[3], filters[2], self.is_deconv, self.nonlinearity)
-        self.up_concat2 = UNetUp(filters[2], filters[1], self.is_deconv, self.nonlinearity)
-        self.up_concat1 = UNetUp(filters[1], filters[0], self.is_deconv, self.nonlinearity)
+        self.up_concat4 = UNetUp(filters[4], filters[3], self.is_deconv, self.nonlinearity, dim=dim)
+        self.up_concat3 = UNetUp(filters[3], filters[2], self.is_deconv, self.nonlinearity, dim=dim)
+        self.up_concat2 = UNetUp(filters[2], filters[1], self.is_deconv, self.nonlinearity, dim=dim)
+        self.up_concat1 = UNetUp(filters[1], filters[0], self.is_deconv, self.nonlinearity, dim=dim)
 
         # final conv (without any concat)
-        self.final = nn.Conv2d(filters[0], n_classes, 1)
+        self.final = ConvNd(filters[0], n_classes, 1)
         self._cache = {}
 
     def output_shape_for(self, input_shape):
@@ -309,7 +423,7 @@ class UNet(nh.layers.Module):
     def find_padding_and_crop_for(self, input_shape):
         """
         Example:
-            >>> # xdoctest: +REQUIRES(--slow, module:ndsampler)
+            >>> # xdoctest: +REQUIRES(--slow, module:kwcoco)
             >>> B, C, W, H = (4, 3, 572, 572)
             >>> B, C, W, H = (4, 3, 372, 400)
             >>> n_classes = 11
@@ -434,7 +548,8 @@ class UNet(nh.layers.Module):
 
     def prepad(self, inputs):
         # do appropriate mirroring so final.size()[-2:] >= input.size()[:-2]
-        pad_wh, crop_wh = self.find_padding_and_crop_for(inputs.size())
+        input_shape = inputs.size()
+        pad_wh, crop_wh = self.find_padding_and_crop_for(input_shape)
         padw, padh = pad_wh
         halfw, halfh = padw / 2, padh / 2
         padding = tuple([
@@ -487,7 +602,7 @@ class UNet(nh.layers.Module):
     def forward(self, inputs):
         """
         Example:
-            >>> # xdoctest: +REQUIRES(module:ndsampler)
+            >>> # xdoctest: +REQUIRES(module:kwcoco)
             >>> # xdoctest: +REQUIRES(module:sympy)
             >>> import torch
             >>> B, C, W, H = (1, 1, 256, 256)

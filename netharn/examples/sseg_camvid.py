@@ -21,8 +21,12 @@ import six
 import scriptconfig as scfg
 from torch.nn import functional as F
 
-import imgaug.augmenters as iaa
-import imgaug
+try:
+    import imgaug.augmenters as iaa
+    import imgaug
+except Exception:
+    iaa = None
+    imgaug = None
 
 
 class SegmentationConfig(scfg.Config):
@@ -141,7 +145,12 @@ class SegmentationDataset(torch.utils.data.Dataset):
 
         if not augment:
             augmenter = None
-        elif augment == 'simple':
+            return augmenter
+
+        if iaa is None:
+            raise Exception('imgaug is not installed')
+
+        if augment == 'simple':
             augmenter = iaa.Sequential([
                 iaa.Crop(percent=(0, .2)),
                 iaa.Fliplr(p=.5)
@@ -211,6 +220,8 @@ class SegmentationDataset(torch.utils.data.Dataset):
         cidx_segmap = heatmap.data['class_idx']
 
         if self.augmenter:
+            if imgaug is None:
+                raise ValueError('imgaug is not installed')
             augdet = self.augmenter.to_deterministic()
             imdata = augdet.augment_image(imdata)
             if hasattr(imgaug, 'SegmentationMapsOnImage'):
@@ -581,8 +592,9 @@ class SegmentationEvaluator(object):
         valid_true_idx = true_idx[is_valid]
         valid_pred_idx = pred_idx[is_valid]
 
-        cfsn = nh.metrics.confusion_matrix(valid_true_idx, valid_pred_idx,
-                                           labels=evaluator.classes)
+        from kwcoco import metrics
+        cfsn = metrics.confusion_matrix(valid_true_idx, valid_pred_idx,
+                                        labels=evaluator.classes)
 
         is_correct = (valid_pred_idx == valid_true_idx)
 

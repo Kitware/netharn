@@ -850,7 +850,7 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.8', 'remote': 'public',
+        'name': 'kwimage', 'branch': 'dev/0.7.13', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -859,11 +859,11 @@ DEVEL_REPOS = [
     #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.6', 'remote': 'public',
+        'name': 'kwcoco', 'branch': 'dev/0.2.13', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.9', 'remote': 'public',
+        'name': 'kwplot', 'branch': 'dev/0.4.10', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
@@ -883,13 +883,13 @@ DEVEL_REPOS = [
         'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.6.4', 'remote': 'public',
+        'name': 'ndsampler', 'branch': 'dev/0.6.6', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.16', 'remote': 'public',
+        'name': 'netharn', 'branch': 'dev/0.5.17', 'remote': 'public',
         'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]

@@ -210,6 +210,8 @@ def ensure_json_serializable(dict_, normalize_containers=False, verbose=0):
 
 class IndexableWalker(Generator):
     """
+    DEPRECATED FOR THE VERSION IN UBELT
+
     Traverses through a nested tree-liked indexable structure.
 
     Generates a path and value to each node in the structure. The path is a

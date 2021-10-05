@@ -42,7 +42,7 @@ class MovingAve(ub.NiceRepr):
 
     def __nice__(self):
         try:
-            return str(ub.repr2(self.normal(), nl=0, si=True, nobr=True, explicit=1))
+            return str(ub.repr2(self.normal(), nl=0, si=True, nobr=1, explicit=1))
         except NotImplementedError:
             return str(ub.repr2(self.average(), nl=0))
 

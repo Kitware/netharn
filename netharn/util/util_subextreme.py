@@ -12,11 +12,12 @@ def argsubmax(ydata, xdata=None):
     for you)
 
     Example:
+        >>> from netharn.util.util_subextreme import *  # NOQA
         >>> ydata = [ 0,  1,  2, 1.5,  0]
         >>> xdata = [00, 10, 20,  30, 40]
         >>> result1 = argsubmax(ydata, xdata=None)
         >>> result2 = argsubmax(ydata, xdata=xdata)
-        >>> result = ub.repr2([result1, result2], precision=4, nl=1, nobr=True)
+        >>> result = ub.repr2([result1, result2], precision=4, nl=1, nobr=1)
         >>> print(result)
         (2.1667, 2.0208),
         (21.6667, 2.0208),
@@ -59,9 +60,11 @@ def argsubmaxima(hist, centers=None, maxima_thresh=None, _debug=False):
         >>> result = str((submaxima_x, submaxima_y))
         >>> print(result)
         >>> # xdoc: +REQUIRES(--show)
-        >>> import plottool as pt
-        >>> pt.draw_hist_subbin_maxima(hist, centers)
-        >>> pt.show_if_requested()
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> # TODO? Port from plottool?
+        >>> #pt.draw_hist_subbin_maxima(hist, centers)
+        >>> #pt.show_if_requested()
         (array([ 3.0318792]), array([ 37.19208239]))
     """
     maxima_x, maxima_y, argmaxima = _hist_argmaxima(hist, centers, maxima_thresh=maxima_thresh)
@@ -131,33 +134,36 @@ def _interpolate_submaxima(argmaxima, hist_, centers=None):
     FIXME:
         what happens when argmaxima[i] == len(hist_)
 
-    Ignore:
-        >>> # ENABLE_DOCTEST
+    Example:
         >>> argmaxima = np.array([1, 4, 7])
         >>> hist_ = np.array([    6.73, 8.69, 0.00, 0.00, 34.62, 29.16, 0.00, 0.00, 6.73, 8.69])
         >>> centers = np.array([-0.39, 0.39, 1.18, 1.96,  2.75,  3.53, 4.32, 5.11, 5.89, 6.68])
         >>> submaxima_x, submaxima_y = _interpolate_submaxima(argmaxima, hist_, centers)
-        >>> locals_ = ub.exec_func_src(_interpolate_submaxima,
-        >>>                            key_list=['x123', 'y123', 'coeff_list'])
-        >>> x123, y123, coeff_list = locals_
+        >>> # Populate some internal variables
+        >>> argmaxima = np.asarray(argmaxima)
+        >>> neighbs = np.vstack((argmaxima - 1, argmaxima, argmaxima + 1))
+        >>> y123 = hist_[neighbs]
+        >>> x123 = neighbs if centers is None else centers[neighbs]
+        >>> coeff_list = [np.polyfit(x123_, y123_, deg=2)
+        >>>               for (x123_, y123_) in zip(x123.T, y123.T)]
         >>> res = (submaxima_x, submaxima_y)
-        >>> result = ub.repr2(res, nl=1, nobr=True, precision=2, with_dtype=True)
+        >>> result = ub.repr2(res, nl=1, nobr=1, precision=2, with_dtype=True)
         >>> print(result)
         >>> # xdoc: +REQUIRES(--show)
-        >>> import plottool as pt
-        >>> pt.ensureqt()
-        >>> pt.figure(fnum=pt.ensure_fnum(None))
-        >>> pt.plot(centers, hist_, '-')
-        >>> pt.plot(centers[argmaxima], hist_[argmaxima], 'o', label='argmaxima')
-        >>> pt.plot(submaxima_x, submaxima_y, 'b*', markersize=20, label='interp maxima')
+        >>> import kwplot
+        >>> plt = kwplot.autompl()
+        >>> ax = kwplot.figure().gca()
+        >>> ax.plot(centers, hist_, '-')
+        >>> ax.plot(centers[argmaxima], hist_[argmaxima], 'o', label='argmaxima')
+        >>> ax.plot(submaxima_x, submaxima_y, 'b*', markersize=20, label='interp maxima')
         >>> # Extract parabola points
-        >>> pt.plt.plot(x123, y123, 'o', label='maxima neighbors')
+        >>> plt.plot(x123, y123, 'o', label='maxima neighbors')
         >>> xpoints = [np.linspace(x1, x3, 50) for (x1, x2, x3) in x123.T]
         >>> ypoints = [np.polyval(coeff, x_pts) for x_pts, coeff in zip(xpoints, coeff_list)]
         >>> # Draw Submax Parabola
         >>> for x_pts, y_pts in zip(xpoints, ypoints):
-        >>>     pt.plt.plot(x_pts, y_pts, 'g--', lw=2)
-        >>> pt.show_if_requested()
+        >>>     plt.plot(x_pts, y_pts, 'g--', lw=2)
+        >>> kwplot.show_if_requested()
     """
     if len(argmaxima) == 0:
         return [], []

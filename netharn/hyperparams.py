@@ -753,13 +753,14 @@ class HyperParams(object):
 
         Example:
             >>> from netharn.hyperparams import *
+            >>> hyper = HyperParams(augment=OrderedDict())
+            >>> assert hyper.augment_json() == {}
+            >>> # xdoctest: +REQUIRES(module:imgaug)
             >>> import imgaug
             >>> augment = imgaug.augmenters.Affine()
             >>> hyper = HyperParams(augment=augment)
             >>> info = hyper.augment_json()
             >>> assert info['__class__'] == 'Affine'
-            >>> hyper = HyperParams(augment=OrderedDict())
-            >>> assert hyper.augment_json() == {}
         """
         if hyper.augment is None:
             return None
