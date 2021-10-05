@@ -846,51 +846,51 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.20', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
+        'name': 'kwarray', 'branch': 'dev/0.5.20', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.13', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
+        'name': 'kwimage', 'branch': 'dev/0.7.13', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
     # {
-    #     'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'public',
-    #     'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
+    #     'name': 'kwannot', 'branch': 'dev/0.1.0', 'remote': 'origin',
+    #     'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.13', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
+        'name': 'kwcoco', 'branch': 'dev/0.2.13', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.10', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
+        'name': 'kwplot', 'branch': 'dev/0.4.10', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
     # Pytorch deployer / exporter
     {
-        'name': 'liberator', 'branch': 'dev/0.0.2', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:python/liberator.git'},
+        'name': 'liberator', 'branch': 'dev/0.0.2', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:python/liberator.git'},
     },
     {
-        'name': 'torch_liberator', 'branch': 'dev/0.1.1', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/torch_liberator.git'},
+        'name': 'torch_liberator', 'branch': 'dev/0.1.1', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/torch_liberator.git'},
     },
 
     # For example data and CLI
     {
-        'name': 'scriptconfig', 'branch': 'dev/0.5.9', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
+        'name': 'scriptconfig', 'branch': 'dev/0.5.9', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.6.6', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
+        'name': 'ndsampler', 'branch': 'dev/0.6.6', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.18', 'remote': 'public',
-        'remotes': {'public': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
+        'name': 'netharn', 'branch': 'dev/0.5.18', 'remote': 'origin',
+        'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]
 
