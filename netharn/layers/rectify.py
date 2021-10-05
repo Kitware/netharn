@@ -87,6 +87,13 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
         >>> rectify_normalizer(8, None)
         None
         >>> rectify_normalizer(8, key={'type': 'syncbatch'})
+        >>> import netharn as nh
+        >>> nh.layers.rectify_normalizer(8, {'type': 'group', 'num_groups': 'auto'})
+        >>> nh.layers.rectify_normalizer(1, {'type': 'group', 'num_groups': 'auto'})
+        >>> nh.layers.rectify_normalizer(16, {'type': 'group', 'num_groups': 'auto'})
+        >>> nh.layers.rectify_normalizer(32, {'type': 'group', 'num_groups': 'auto'})
+        >>> nh.layers.rectify_normalizer(64, {'type': 'group', 'num_groups': 'auto'})
+        >>> nh.layers.rectify_normalizer(1024, {'type': 'group', 'num_groups': 'auto'})
     """
     if key is None:
         return None
@@ -121,17 +128,44 @@ def rectify_normalizer(in_channels, key=ub.NoParam, dim=2, **kwargs):
     elif norm_type == 'group':
         in_channels_key = 'num_channels'
         if key.get('num_groups') is None:
-            key['num_groups'] = ('gcd', min(in_channels, 32))
+            key['num_groups'] = 'auto'
+            # key['num_groups'] = ('gcd', min(in_channels, 32))
 
-        if isinstance(key['num_groups'], tuple):
-            if key['num_groups'][0] == 'gcd':
-                key['num_groups'] = gcd(
-                    key['num_groups'][1], in_channels)
-        if in_channels % key['num_groups'] != 0:
-            raise AssertionError(
-                'Cannot divide n_inputs {} by num groups {}'.format(
-                    in_channels, key['num_groups']))
+        if key.get('num_groups') == 'auto':
+            if in_channels == 1:
+                # Warning: cant group norm this
+                import netharn as nh
+                return nh.layers.Identity()
+            else:
+                valid_num_groups = [
+                    factor for factor in range(1, in_channels)
+                    if in_channels % factor == 0
+                ]
+                if len(valid_num_groups) == 0:
+                    raise Exception
+                infos = [
+                    {'ng': ng, 'nc': in_channels / ng}
+                    for ng in valid_num_groups
+                ]
+                ideal = in_channels ** (0.5)
+                for item in infos:
+                    item['heuristic'] = abs(ideal - item['ng']) * abs(ideal - item['nc'])
+                chosen = sorted(infos, key=lambda x: (x['heuristic'], 1 - x['ng']))[0]
+                key['num_groups'] = chosen['ng']
+                if key['num_groups'] == in_channels:
+                    key['num_groups'] = 1
+
+            if isinstance(key['num_groups'], tuple):
+                if key['num_groups'][0] == 'gcd':
+                    key['num_groups'] = gcd(
+                        key['num_groups'][1], in_channels)
+
+            if in_channels % key['num_groups'] != 0:
+                raise AssertionError(
+                    'Cannot divide n_inputs {} by num groups {}'.format(
+                        in_channels, key['num_groups']))
         cls = torch.nn.GroupNorm
+
     elif norm_type == 'batch+group':
         return torch.nn.Sequential(
             rectify_normalizer(in_channels, 'batch', dim=dim),
