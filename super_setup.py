@@ -846,11 +846,11 @@ def determine_code_dpath():
 DEVEL_REPOS = [
     # The util libs
     {
-        'name': 'kwarray', 'branch': 'dev/0.5.20', 'remote': 'origin',
+        'name': 'kwarray', 'branch': 'dev/0.5.21', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.7.14', 'remote': 'origin',
+        'name': 'kwimage', 'branch': 'dev/0.7.15', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -859,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.16', 'remote': 'origin',
+        'name': 'kwcoco', 'branch': 'dev/0.2.17', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
@@ -873,7 +873,7 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:python/liberator.git'},
     },
     {
-        'name': 'torch_liberator', 'branch': 'dev/0.1.1', 'remote': 'origin',
+        'name': 'torch_liberator', 'branch': 'dev/0.1.2', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/torch_liberator.git'},
     },
 
