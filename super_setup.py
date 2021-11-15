@@ -859,7 +859,7 @@ DEVEL_REPOS = [
     #     'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.17', 'remote': 'origin',
+        'name': 'kwcoco', 'branch': 'dev/0.2.18', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {

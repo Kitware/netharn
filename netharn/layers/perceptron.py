@@ -119,7 +119,7 @@ class MultiLayerPerceptronNd(common.AnalyticModule):
             n = hidden_channels
             hidden_channels = np.linspace(in_channels, out_channels, n + 1,
                                           endpoint=False)[1:]
-            hidden_channels = hidden_channels.round().astype(np.int).tolist()
+            hidden_channels = hidden_channels.round().astype(int).tolist()
         self._hidden_channels = hidden_channels
 
         hidden = self.hidden = common.Sequential()
