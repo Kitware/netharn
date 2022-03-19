@@ -889,7 +889,7 @@ DEVEL_REPOS = [
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.18', 'remote': 'origin',
+        'name': 'netharn', 'branch': 'dev/0.5.19', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]
