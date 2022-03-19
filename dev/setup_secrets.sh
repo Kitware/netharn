@@ -3,21 +3,10 @@ __doc__='
 SETUP CI SECRET INSTRUCTIONS
 ============================
 
-TODO: These instructions are currently pieced together from old disparate
-instances, and are not yet fully organized.
-
 The original template file should be:
 ~/misc/templates/PYPKG/dev/setup_secrets.sh
 
 Development script for updating secrets when they rotate
-
-
-The intent of this script is to help setup secrets for whichever of the
-following CI platforms is used:
-
-../.github/workflows/tests.yml
-../.gitlab-ci.yml
-../.circleci/config.yml
 
 
 =========================
@@ -96,15 +85,6 @@ GITLAB ACTION INSTRUCTIONS
      # and masked option. Also make sure you have master and release
      # branches protected.
      # https://gitlab.kitware.com/computer-vision/kwcoco/-/settings/repository#js-protected-branches-settings
-
-
-============================
-Relevant CI Secret Locations
-============================
-
-https://github.com/pyutils/line_profiler/settings/secrets/actions
-
-https://app.circleci.com/settings/project/github/pyutils/line_profiler/environment-variables?return-to=https%3A%2F%2Fapp.circleci.com%2Fpipelines%2Fgithub%2Fpyutils%2Fline_profiler
 '
 
 setup_package_environs(){
@@ -121,6 +101,7 @@ setup_package_environs(){
     export VARNAME_TWINE_PASSWORD="TWINE_PASSWORD"
     export VARNAME_TEST_TWINE_USERNAME="TEST_TWINE_USERNAME"
     export VARNAME_TEST_TWINE_PASSWORD="TEST_TWINE_PASSWORD"
+    export VARNAME_PUSH_TOKEN="GITLAB_KITWARE_TOKEN"
     export GPG_IDENTIFIER="=Erotemic-CI <erotemic@gmail.com>"
     ' | python -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip(chr(10)))" > dev/secrets_configuration.sh
     git add dev/secrets_configuration.sh
@@ -149,104 +130,20 @@ setup_package_environs(){
     #' | python -c "import sys; from textwrap import dedent; print(dedent(sys.stdin.read()).strip(chr(10)))" > dev/secrets_configuration.sh
 }
 
-upload_github_secrets(){
-    load_secrets
-    unset GITHUB_TOKEN
-    gh auth login
-    source dev/secrets_configuration.sh
-    gh secret set $VARNAME_CI_SECRET -b"${!VARNAME_CI_SECRET}"
-    gh secret set $VARNAME_TWINE_USERNAME -b"${!VARNAME_TWINE_USERNAME}"
-    gh secret set $VARNAME_TWINE_PASSWORD -b"${!VARNAME_TWINE_PASSWORD}"
-    gh secret set $VARNAME_TEST_TWINE_PASSWORD -b"${!VARNAME_TEST_TWINE_PASSWORD}"
-    gh secret set $VARNAME_TEST_TWINE_USERNAME -b"${!VARNAME_TEST_TWINE_USERNAME}"
-
-}
-
-
-upload_gitlab_secrets(){
-    __doc__="
-    Use the gitlab API to modify group-level secrets
-    "
-    # In Repo Directory
-    load_secrets
-    REMOTE=origin
-    MERGE_BRANCH=$(git branch --show-current)
-    echo "MERGE_BRANCH = $MERGE_BRANCH"
-    GROUP_NAME=$(git remote get-url $REMOTE | cut -d ":" -f 2 | cut -d "/" -f 1)
-    echo "GROUP_NAME = $GROUP_NAME"
-    HOST=https://$(git remote get-url $REMOTE | cut -d "/" -f 1 | cut -d "@" -f 2 | cut -d ":" -f 1)
-    echo "HOST = $HOST"
-    PRIVATE_GITLAB_TOKEN=$(git_token_for $HOST)
-    if [[ "$PRIVATE_GITLAB_TOKEN" == "ERROR" ]]; then
-        echo "Failed to load authentication key"
-        return 1
-    fi
-
-    TMP_DIR=$(mktemp -d -t ci-XXXXXXXXXX)
-    curl --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups" > $TMP_DIR/all_group_info
-    GROUP_ID=$(cat $TMP_DIR/all_group_info | jq ". | map(select(.name==\"$GROUP_NAME\")) | .[0].id")
-    echo "GROUP_ID = $GROUP_ID"
-
-    curl --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups/$GROUP_ID" > $TMP_DIR/group_info
-    cat $TMP_DIR/group_info | jq
-
-    # Get group-level secret variables
-    curl --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups/$GROUP_ID/variables" > $TMP_DIR/group_vars
-    cat $TMP_DIR/group_vars | jq '.[] | .key'
-
-    source dev/secrets_configuration.sh
-    SECRET_VARNAME_ARR=(VARNAME_CI_SECRET VARNAME_TWINE_USERNAME VARNAME_TWINE_PASSWORD VARNAME_TEST_TWINE_PASSWORD VARNAME_TEST_TWINE_USERNAME)
-    for SECRET_VARNAME_PTR in "${SECRET_VARNAME_ARR[@]}"; do
-        SECRET_VARNAME=${!SECRET_VARNAME_PTR}
-        echo ""
-        echo " ---- "
-        LOCAL_VALUE=${!SECRET_VARNAME}
-        REMOTE_VALUE=$(cat $TMP_DIR/group_vars | jq -r ".[] | select(.key==\"$SECRET_VARNAME\") | .value")
-
-        # Print current local and remote value of a variable
-        echo "SECRET_VARNAME_PTR = $SECRET_VARNAME_PTR"
-        echo "SECRET_VARNAME = $SECRET_VARNAME"
-        echo "(local)  $SECRET_VARNAME = $LOCAL_VALUE"
-        echo "(remote) $SECRET_VARNAME = $REMOTE_VALUE"
-
-        #curl --request GET --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups/$GROUP_ID/variables/SECRET_VARNAME" | jq -r .message
-        if [[ "$REMOTE_VALUE" == "" ]]; then
-            # New variable
-            echo "Remove variable does not exist, posting"
-            curl --request POST --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups/$GROUP_ID/variables" \
-                    --form "key=${SECRET_VARNAME}" \
-                    --form "value=${LOCAL_VALUE}" \
-                    --form "protected=true" \
-                    --form "masked=true" \
-                    --form "environment_scope=*" \
-                    --form "variable_type=env_var" 
-        elif [[ "$REMOTE_VALUE" != "$LOCAL_VALUE" ]]; then
-            echo "Remove variable does not agree, putting"
-            # Update variable value
-            curl --request PUT --header "PRIVATE-TOKEN: $PRIVATE_GITLAB_TOKEN" "$HOST/api/v4/groups/$GROUP_ID/variables/$SECRET_VARNAME" \
-                    --form "value=${LOCAL_VALUE}" 
-        else
-            echo "Remote value agrees with local"
-        fi
-    done
-    rm $TMP_DIR/group_vars
-}
 
 
 export_encrypted_code_signing_keys(){
-    # You will need to rerun this whenever the signkeys expire and are renewed
+    setup_package_environs
 
+    cd $REPO_DPATH
     # Load or generate secrets
     load_secrets
 
-    source dev/secrets_configuration.sh
-
     CI_SECRET="${!VARNAME_CI_SECRET}"
-    echo "VARNAME_CI_SECRET = $VARNAME_CI_SECRET"
-    echo "CI_SECRET=$CI_SECRET"
-    echo "GPG_IDENTIFIER=$GPG_IDENTIFIER"
+    echo "CI_SECRET = $CI_SECRET"
 
     # ADD RELEVANT VARIABLES TO THE CI SECRET VARIABLES
+
     # HOW TO ENCRYPT YOUR SECRET GPG KEY
     # You need to have a known public gpg key for this to make any sense
 
@@ -271,7 +168,7 @@ export_encrypted_code_signing_keys(){
     # Test decrpyt
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | gpg --list-packets --verbose
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc  | gpg --list-packets --verbose
-    GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
+    GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | gpg --list-packets --verbose
     cat dev/public_gpg_key
 
     unload_secrets
@@ -292,8 +189,6 @@ _test_gnu(){
     ls -al $GNUPGHOME
     chmod 700 -R $GNUPGHOME
 
-    source dev/secrets_configuration.sh
-
     gpg -k
     
     load_secrets
@@ -302,14 +197,11 @@ _test_gnu(){
 
     cat dev/public_gpg_key
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc 
-    GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc 
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc
 
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_public_gpg_key.pgp.enc | gpg --import
-    GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/gpg_owner_trust.enc | gpg --import-ownertrust
     GLKWS=$CI_SECRET openssl enc -aes-256-cbc -pbkdf2 -md SHA512 -pass env:GLKWS -d -a -in dev/ci_secret_gpg_subkeys.pgp.enc | gpg --import
 
     gpg -k
-    # | gpg --import
-    # | gpg --list-packets --verbose
 }
+
