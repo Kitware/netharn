@@ -79,12 +79,14 @@ class ListedScheduler(_Scheduler):
         ...     states.append((self.epoch, copy.deepcopy(self._optim_attrs())))
         ...     self.step()
         >>> print('states = {}'.format(ub.repr2(states, nl=1)))
+
         states = [
             (0, {'dampening': [0], 'lr': [1], 'momentum': [2], 'nesterov': [False], 'weight_decay': [0]}),
             (1, {'dampening': [0], 'lr': [1], 'momentum': [2], 'nesterov': [False], 'weight_decay': [0]}),
             (2, {'dampening': [0], 'lr': [21], 'momentum': [22], 'nesterov': [False], 'weight_decay': [0]}),
             (3, {'dampening': [0], 'lr': [31], 'momentum': [32], 'nesterov': [False], 'weight_decay': [0]}),
         ]
+
         >>> # Test ADAM
         >>> optimizer = torch.optim.Adam(model.parameters(), lr=0)
         >>> self = ListedScheduler(points, optimizer=optimizer, interpolation='linear')
@@ -93,6 +95,7 @@ class ListedScheduler(_Scheduler):
         ...     states.append((self.epoch, copy.deepcopy(self._optim_attrs())))
         ...     self.step()
         >>> print('states = {}'.format(ub.repr2(states, nl=1)))
+
         states = [
             (0, {'amsgrad': [False], 'betas': [(2, 0.999)], 'eps': [1e-08], 'lr': [1], 'weight_decay': [0]}),
             (1, {'amsgrad': [False], 'betas': [(12.0, 0.999)], 'eps': [1e-08], 'lr': [11.0], 'weight_decay': [0]}),
