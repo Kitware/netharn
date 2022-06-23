@@ -12,7 +12,10 @@ Speedups
 import torch
 import torch.nn as nn
 import numpy as np  # NOQA
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')

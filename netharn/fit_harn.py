@@ -153,7 +153,6 @@ import traceback
 from os.path import join
 from os.path import exists
 from os.path import dirname
-from distutils.version import LooseVersion
 
 import torch
 import numpy as np
@@ -168,6 +167,12 @@ from netharn.util import profiler
 from netharn.util import strip_ansi
 from netharn.exceptions import (CannotResume, SkipBatch, StopTraining,
                                 TrainingDiverged)
+
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 try:
     import tensorboard_logger
 except ImportError:

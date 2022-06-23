@@ -863,7 +863,7 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.12', 'remote': 'origin',
+        'name': 'kwplot', 'branch': 'dev/0.4.13', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 

@@ -9,7 +9,10 @@ import torch
 import torch.nn as nn
 import ubelt as ub
 from netharn import layers
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 _TORCH_HAS_BOOL_COMP = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')

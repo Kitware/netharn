@@ -10,7 +10,11 @@ Concepts:
 import ubelt as ub
 import torch
 
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 _TORCH_IS_GE_1_2_0 = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
