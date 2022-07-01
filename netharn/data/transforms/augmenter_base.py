@@ -5,8 +5,10 @@ try:
     import imgaug
     _Augmenter = imgaug.augmenters.Augmenter
 except Exception:
-    import warnings
-    warnings.warn('imgaug is not availble', DeprecationWarning)
+    # imgaug is deprecated, don't warn and dont use
+    if 0:
+        import warnings
+        warnings.warn('imgaug is not availble', DeprecationWarning)
     _Augmenter = object
 
 
