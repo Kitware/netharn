@@ -6,6 +6,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.5.19 - Unreleased
 
+### Added
+* Ability to ignore the first N epochs when choosing the best model via the `ignore_first` config.
+
 
 ## Version 0.5.18 - Released 2022-03-19
 
