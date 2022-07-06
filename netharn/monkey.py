@@ -7,3 +7,4 @@ if sys.version_info[0:2] >= (3, 10):
     import collections
     from collections import abc
     collections.MutableMapping = abc.MutableMapping
+    collections.MutableSequence = abc.MutableSequence
