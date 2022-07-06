@@ -15,7 +15,6 @@ import torch
 import ubelt as ub
 import numpy as np  # NOQA
 import re
-import collections
 import torch.nn.functional as F
 # from torch.nn.parallel import DataParallel
 from itertools import chain
@@ -23,6 +22,7 @@ from netharn.device import DataParallel, DataSerial, XPU
 from torch.nn.parallel._functions import _get_stream
 from torch.nn.parallel._functions import Scatter as OrigScatter
 from torch.nn.parallel._functions import Gather as OrigGather
+
 try:
     import collections.abc as container_abcs
     from six import string_types as string_classes
@@ -493,17 +493,17 @@ def container_collate(inbatch, num_devices=None):
         >>> print('batch = {}'.format(ub.repr2(batch, nl=1)))
     """
 
-    if not isinstance(inbatch, collections.Sequence):
+    if not isinstance(inbatch, container_abcs.Sequence):
         raise TypeError("{} is not supported.".format(inbatch.dtype))
     item0 = inbatch[0]
     if isinstance(item0, ItemContainer):
         return item0.__class__._collate(inbatch, num_devices=num_devices)
-    elif isinstance(item0, collections.Sequence):
+    elif isinstance(item0, container_abcs.Sequence):
         transposed = zip(*inbatch)
         return [container_collate(samples,
                                   num_devices=num_devices)
                 for samples in transposed]
-    elif isinstance(item0, collections.Mapping):
+    elif isinstance(item0, container_abcs.Mapping):
         return {
             key: container_collate([d[key] for d in inbatch],
                                    num_devices=num_devices)

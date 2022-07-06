@@ -139,6 +139,7 @@ class Monitor(ub.NiceRepr):
             >>> cls, initkw = Monitor.coerce(config)
             >>> print('initkw = {}'.format(ub.repr2(initkw, nl=1)))
             initkw = {
+                'ignore_first': 0,
                 'max_epoch': 100,
                 'min_lr': 1e-05,
                 'minimize': ['loss'],
