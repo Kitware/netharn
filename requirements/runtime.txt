@@ -5,12 +5,24 @@
 # install torch yourself on windows. Hopefully there will be a better alternative
 # in the future.
 
-torch >= 1.0.0
+torch>=1.11.0    ;                            python_version >= '3.10'    # Python 3.10+
+torch>=1.7.1     ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+torch>=1.7.0     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+torch>=1.7.0     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+torch>=1.7.0     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
 torchvision >= 0.2.0
 
 six >= 1.11.0
-numpy >= 1.9.0
-ubelt >= 0.10.0
+
+numpy>=1.21.6    ;                            python_version >= '3.10'    # Python 3.10+
+numpy>=1.19.3    ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
+numpy>=1.19.2    ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+numpy>=1.19.2    ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+numpy>=1.19.2    ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+
+ubelt >= 1.1.2
+
 parse >= 1.8.4
 pyflakes >= 1.6.0
 astunparse >= 1.6.1
@@ -23,10 +35,10 @@ imageio < 2.8.0;python_version < '3.0'
 # imgaug < 0.3.0;python_version < '3.0' 
 
 # NOTE: in the future kwimage and kwplot may become optional
-scriptconfig >= 0.4.0
-kwarray >= 0.4.0
-kwimage >= 0.4.0
-kwplot >= 0.4.0
+scriptconfig >= 0.5.8
+kwarray >= 0.6.0
+kwimage >= 0.9.2
+kwplot >= 0.4.12
 
 qualname>=0.1.0;python_version < '3.0' 
 torch_liberator >= 0.0.4
