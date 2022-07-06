@@ -840,7 +840,7 @@ def _cached_class_frequency(dset):
     dset_copy.augmenter = None
 
     cfgstr = '_'.join([dset_copy.sampler.dset.hashid, 'v1'])
-    cacher = ub.Cacher('class_freq', cfgstr=cfgstr)
+    cacher = ub.Cacher('class_freq', depends=cfgstr)
     total_freq = cacher.tryload()
     if total_freq is None:
 

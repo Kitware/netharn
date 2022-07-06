@@ -457,7 +457,8 @@ class Monitor(ub.NiceRepr):
         values = np.array([m[key] for m in metrics])
         is_valid = np.array(
             [False if e is None else
-             e >= monitor.ignore_first for e in monitor._epochs])
+             int(e) >= int(monitor.ignore_first)
+             for e in monitor._epochs], dtype=bool)
 
         valid_values = values[is_valid]
         valid_epochs = epochs[is_valid]

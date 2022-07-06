@@ -251,6 +251,8 @@ class Repo(ub.NiceRepr):
         >>> repo._cmd('./run_doctests.sh')
         repo = <Repo('ubelt')>
 
+    Example:
+        >>> # xdoctest: +SKIP
         >>> # Here is a less simple example referencing ubelt
         >>> from super_setup import *
         >>> import ubelt as ub
@@ -472,6 +474,7 @@ class Repo(ub.NiceRepr):
         Look for a "dev" branch with a higher version number and switch to that.
 
         Example:
+            >>> # xdoctest: +SKIP
             >>> from super_setup import *
             >>> import ubelt as ub
             >>> repo = Repo.demo()

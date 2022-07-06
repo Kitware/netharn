@@ -334,7 +334,7 @@ class AnnotCocoDataset(torch.utils.data.Dataset, ub.NiceRepr):
     def __init__(self, sampler, workdir=None, augment=False, dim=416):
         print('make AnnotCocoDataset')
 
-        cacher = ub.Cacher('aid_pccs_v2', cfgstr=sampler.dset.tag, verbose=True)
+        cacher = ub.Cacher('aid_pccs_v2', depends=sampler.dset.tag, verbose=True)
         aid_pccs = cacher.tryload()
         if aid_pccs is None:
             aid_pccs = extract_ggr_pccs(sampler.dset)

@@ -141,6 +141,10 @@ Example:
     outputs = tensor([[0.4105, 0.5895]], grad_fn=<SoftmaxBackward>)
     model.__module__ = 'deploy_ToyNet2d_onnxqaww_002_HVWCGI/ToyNet2d_2a3f49'
     harn.model.module.__module__ = 'netharn.models.toynet'
+    >>> model = None
+    >>> loader = None
+    >>> outputs = None
+    >>> images = None
 """
 from netharn.export import deployer
 from netharn.export import exporter

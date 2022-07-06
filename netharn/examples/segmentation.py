@@ -555,7 +555,7 @@ def _cached_class_frequency(dset, workers=0):
     dset_copy.augmenter = None
 
     cfgstr = '_'.join([dset_copy.sampler.dset.hashid, 'v1'])
-    cacher = ub.Cacher('class_freq', cfgstr=cfgstr)
+    cacher = ub.Cacher('class_freq', depends=cfgstr)
     total_freq = cacher.tryload()
     if total_freq is None:
 
@@ -720,7 +720,7 @@ def setup_harn(cmdline=True, **kw):
         stats_dset = torch_datasets['train']
         stats_idxs = kwarray.shuffle(np.arange(len(stats_dset)), rng=0)[0:min(1000, len(stats_dset))]
         stats_subset = torch.utils.data.Subset(stats_dset, stats_idxs)
-        cacher = ub.Cacher('dset_mean', cfgstr=stats_dset.input_id + 'v3')
+        cacher = ub.Cacher('dset_mean', depends=stats_dset.input_id + 'v3')
         input_stats = cacher.tryload()
         if input_stats is None:
             loader = torch.utils.data.DataLoader(

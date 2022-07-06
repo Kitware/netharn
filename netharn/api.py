@@ -109,7 +109,7 @@ def _coerce_datasets(config):
         stats_idxs = kwarray.shuffle(np.arange(len(_dset)), rng=0)[0:min(1000, len(_dset))]
         stats_subset = torch.utils.data.Subset(_dset, stats_idxs)
 
-        cacher = ub.Cacher('dset_mean', cfgstr=_dset.input_id + 'v3')
+        cacher = ub.Cacher('dset_mean', depends=_dset.input_id + 'v3')
         input_stats = cacher.tryload()
 
         from netharn.data.channel_spec import ChannelSpec

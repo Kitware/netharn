@@ -40,7 +40,7 @@ def svd_orthonormal(shape, rng=None, cache_key=None):
     # TODO: only cache very large matrices (4096x4096)
     # TODO: only cache very large matrices, not (256,256,3,3)
     cacher = ub.Cacher('svd_orthonormal', appname='netharn', enabled=enabled,
-                       cfgstr=cfgstr)
+                       depends=cfgstr)
     q = cacher.tryload()
     if q is None:
         # print('Compute orthonormal matrix with shape ' + str(shape))
