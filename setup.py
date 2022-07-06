@@ -234,6 +234,31 @@ if __name__ == '__main__':
         clean()
         # sys.exit(0)
 
+    setupkw = {}
+    setupkw["install_requires"] = parse_requirements("requirements/runtime.txt")
+    setupkw["extras_require"] = {
+        "all": parse_requirements("requirements.txt"),
+        "tests": parse_requirements("requirements/tests.txt"),
+        "optional": parse_requirements("requirements/optional.txt"),
+        "headless": parse_requirements("requirements/headless.txt"),
+        "graphics": parse_requirements("requirements/graphics.txt"),
+        # Strict versions
+        "headless-strict": parse_requirements(
+            "requirements/headless.txt", versions="strict"
+        ),
+        "graphics-strict": parse_requirements(
+            "requirements/graphics.txt", versions="strict"
+        ),
+        "all-strict": parse_requirements("requirements.txt", versions="strict"),
+        "runtime-strict": parse_requirements(
+            "requirements/runtime.txt", versions="strict"
+        ),
+        "tests-strict": parse_requirements("requirements/tests.txt", versions="strict"),
+        "optional-strict": parse_requirements(
+            "requirements/optional.txt", versions="strict"
+        ),
+    }
+
     setup(
         name=NAME,
         version=VERSION,
@@ -243,14 +268,6 @@ if __name__ == '__main__':
         description='Train and deploy pytorch models',
         long_description=parse_description(),
         long_description_content_type='text/x-rst',
-        install_requires=parse_requirements('requirements/runtime.txt'),
-        extras_require={
-            'all': parse_requirements('requirements.txt'),
-            'optional': parse_requirements('requirements/optional.txt'),
-            'tests': parse_requirements('requirements/tests.txt'),
-            'graphics': parse_requirements('requirements/graphics.txt'),
-            'headless': parse_requirements('requirements/headless.txt'),
-        },
         packages=find_packages(include='netharn.*'),
         package_data={
             'netharn.initializers._nx_ext_v2': ['*.pyx'],
@@ -277,4 +294,5 @@ if __name__ == '__main__':
             'Programming Language :: Python :: 3.9',
             'Programming Language :: Python :: 3.10',
         ],
+        **setupkw,
     )
