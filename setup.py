@@ -12,20 +12,34 @@ def parse_version(fpath):
     """
     Statically parse the version number from a python file
     """
+    value = static_parse('__version__', fpath)
+    return value
+
+
+def static_parse(varname, fpath):
+    """
+    Statically parse the a constant variable from a python file
+    """
     import ast
     if not exists(fpath):
         raise ValueError('fpath={!r} does not exist'.format(fpath))
     with open(fpath, 'r') as file_:
         sourcecode = file_.read()
     pt = ast.parse(sourcecode)
-    class VersionVisitor(ast.NodeVisitor):
+    class StaticVisitor(ast.NodeVisitor):
         def visit_Assign(self, node):
             for target in node.targets:
-                if getattr(target, 'id', None) == '__version__':
-                    self.version = node.value.s
-    visitor = VersionVisitor()
+                if getattr(target, 'id', None) == varname:
+                    self.static_value = node.value.s
+    visitor = StaticVisitor()
     visitor.visit(pt)
-    return visitor.version
+    try:
+        value = visitor.static_value
+    except AttributeError:
+        import warnings
+        value = 'Unknown {}'.format(varname)
+        warnings.warn(value)
+    return value
 
 
 def parse_description():
@@ -46,14 +60,14 @@ def parse_description():
     return ''
 
 
-def parse_requirements(fname='requirements.txt', with_version=False):
+def parse_requirements(fname='requirements.txt', versions=False):
     """
     Parse the package dependencies listed in a requirements file but strips
     specific versioning information.
 
     Args:
         fname (str): path to requirements file
-        with_version (bool | str, default=False):
+        versions (bool | str, default=False):
             If true include version specs.
             If strict, then pin to the minimum version.
 
@@ -123,11 +137,9 @@ def parse_requirements(fname='requirements.txt', with_version=False):
         if exists(require_fpath):
             for info in parse_require_file(require_fpath):
                 parts = [info['package']]
-                if with_version and 'version' in info:
-                    if with_version == 'strict':
-                        print(f'with_version={with_version}')
+                if versions and 'version' in info:
+                    if versions == 'strict':
                         # In strict mode, we pin to the minimum version
-                        print(info['version'])
                         if info['version']:
                             # Only replace the first >= instance
                             verstr = ''.join(info['version']).replace('>=', '==', 1)
