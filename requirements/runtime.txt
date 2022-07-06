@@ -30,7 +30,7 @@ numpy>=1.19.2    ; python_version < '3.7' and python_version >= '3.6'    # Pytho
 ubelt >= 1.1.2
 
 parse >= 1.8.4
-pyflakes >= 1.6.0
+pyflakes >= 2.4.0
 astunparse >= 1.6.1
 pygtrie >= 2.3.3
 
