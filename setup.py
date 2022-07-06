@@ -248,11 +248,14 @@ if __name__ == '__main__':
             'all': parse_requirements('requirements.txt'),
             'optional': parse_requirements('requirements/optional.txt'),
             'tests': parse_requirements('requirements/tests.txt'),
+            'graphics': parse_requirements('requirements/graphics.txt'),
+            'headless': parse_requirements('requirements/headless.txt'),
         },
         packages=find_packages(include='netharn.*'),
         package_data={
             'netharn.initializers._nx_ext_v2': ['*.pyx'],
         },
+        python_requires='>=3.6',
         license='Apache 2',
         classifiers=[
             # List of classifiers available at:
@@ -268,6 +271,10 @@ if __name__ == '__main__':
             # This should be interpreted as Apache License v2.0
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions
-            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
         ],
     )
