@@ -173,6 +173,9 @@ try:  # nocover
 except ImportError:
     from distutils.version import LooseVersion
 
+
+# Hack: patch collections so tensorboard_logger doesnt die
+from netharn import monkey  # NOQA
 try:
     import tensorboard_logger
 except ImportError:
