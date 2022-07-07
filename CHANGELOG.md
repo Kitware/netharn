@@ -6,6 +6,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Version 0.6.1 - Unreleased
 
+### Fixed
+* Hotfix so the training loop doesnt crash when `ignore_first_epochs>0`
 
 ## Version 0.5.19 - Released 2022-07-06
 
