@@ -10,7 +10,11 @@ Concepts:
 import ubelt as ub
 import torch
 
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 _TORCH_IS_GE_1_2_0 = LooseVersion(torch.__version__) >= LooseVersion('1.2.0')
 
 
@@ -105,7 +109,7 @@ def _coerce_datasets(config):
         stats_idxs = kwarray.shuffle(np.arange(len(_dset)), rng=0)[0:min(1000, len(_dset))]
         stats_subset = torch.utils.data.Subset(_dset, stats_idxs)
 
-        cacher = ub.Cacher('dset_mean', cfgstr=_dset.input_id + 'v3')
+        cacher = ub.Cacher('dset_mean', depends=_dset.input_id + 'v3')
         input_stats = cacher.tryload()
 
         from netharn.data.channel_spec import ChannelSpec
@@ -823,8 +827,12 @@ def configure_hacks(config={}, **kw):
     config = _update_defaults(config, kw)
 
     if config.get('workers', 0) > 0:
-        import cv2
-        cv2.setNumThreads(0)
+        try:
+            import cv2
+        except ImportError:
+            pass
+        else:
+            cv2.setNumThreads(0)
 
     strat = config.get('sharing_strategy', None)
     if strat is not None and strat != 'default':

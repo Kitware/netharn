@@ -13,12 +13,13 @@ import ubelt as ub
 __all__ = ['Monitor']
 
 
-def demodata_monitor():
+def demodata_monitor(ignore_first_epochs=0):
     rng = np.random.RandomState(0)
     n = 300
     losses = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)[::-1]
     mious = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)
-    monitor = Monitor(minimize=['loss'], maximize=['miou'], smoothing=0.0)
+    monitor = Monitor(minimize=['loss'], maximize=['miou'], smoothing=0.0,
+                      ignore_first_epochs=ignore_first_epochs)
     for epoch, (loss, miou) in enumerate(zip(losses, mious)):
         monitor.update(epoch, {'loss': loss, 'miou': miou})
     return monitor
@@ -40,6 +41,9 @@ class Monitor(ub.NiceRepr):
             to wait before quiting if the quality metrics are not improving.
         min_lr (float): If specified stop learning after lr drops beyond this
             point
+        ignore_first_epochs (int): If specified, ignore the results from the
+            first few epochs. Determine what the best model is after this
+            point.
 
     Example:
         >>> # simulate loss going down and then overfitting
@@ -52,11 +56,40 @@ class Monitor(ub.NiceRepr):
         >>> for epoch, (loss, miou) in enumerate(zip(losses, mious)):
         >>>     monitor.update(epoch, {'loss': loss, 'miou': miou})
         >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
+        >>> monitor.show()
+
+    Example:
+        >>> # Test the ignore first param
+        >>> from netharn.monitor import *
+        >>> rng = np.random.RandomState(0)
+        >>> n = 300
+        >>> losses = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)[::-1]
+        >>> mious = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)
+        >>> monitor = Monitor(minimize=['loss'], smoothing=.6, ignore_first_epochs=3)
+        >>> monitor.update(0, {'loss': 0.001})
+        >>> monitor.update(1, {'loss': 9.40})
+        >>> monitor.update(2, {'loss': 1.40})
+        >>> monitor.update(3, {'loss': 0.40})
+        >>> monitor.update(4, {'loss': 0.30})
+        >>> monitor.update(5, {'loss': 0.35})
+        >>> monitor.update(6, {'loss': 0.33})
+        >>> monitor.update(7, {'loss': 0.31})
+        >>> monitor.update(8, {'loss': 0.32})
+        >>> monitor.update(9, {'loss': 0.33})
+        >>> monitor.update(10, {'loss': 0.311})
+        >>> monitor.update(11, {'loss': 0.4})
+        >>> monitor.update(12, {'loss': 0.5})
+        >>> monitor.update(13, {'loss': 0.6})
+        >>> # xdoctest: +REQUIRES(--show)
+        >>> import kwplot
+        >>> kwplot.autompl()
         >>> monitor.show()
     """
 
     def __init__(monitor, minimize=['loss'], maximize=[], smoothing=0.0,
-                 patience=None, max_epoch=1000, min_lr=None):
+                 patience=None, max_epoch=1000, min_lr=None, ignore_first_epochs=0):
 
         # Internal attributes
         monitor._ewma = util.ExpMovingAve(alpha=1 - smoothing)
@@ -81,6 +114,7 @@ class Monitor(ub.NiceRepr):
         monitor.patience = patience
         monitor.max_epoch = max_epoch
         monitor.min_lr = min_lr
+        monitor.ignore_first_epochs = ignore_first_epochs
 
     def __nice__(self):
         import ubelt as ub
@@ -88,6 +122,7 @@ class Monitor(ub.NiceRepr):
             'patience': self.patience,
             'max_epoch': self.max_epoch,
             'min_lr': self.min_lr,
+            'ignore_first_epochs': self.ignore_first_epochs,
         }, nl=0)
 
     @classmethod
@@ -104,6 +139,7 @@ class Monitor(ub.NiceRepr):
             >>> cls, initkw = Monitor.coerce(config)
             >>> print('initkw = {}'.format(ub.repr2(initkw, nl=1)))
             initkw = {
+                'ignore_first_epochs': 0,
                 'max_epoch': 100,
                 'min_lr': 1e-05,
                 'minimize': ['loss'],
@@ -118,6 +154,7 @@ class Monitor(ub.NiceRepr):
             'max_epoch': max_epoch,
             'patience': config.get('patience', max_epoch),
             'min_lr': config.get('min_lr', None),
+            'ignore_first_epochs': config.get('ignore_first_epochs', 0),
         })
 
     def show(monitor):
@@ -141,6 +178,7 @@ class Monitor(ub.NiceRepr):
             )
 
             # star all the good epochs
+            monitor.best_epochs(1)
             flags = np.array(monitor._is_good)
             if np.any(flags):
                 plt.plot(list(ub.compress(monitor._epochs, flags)),
@@ -224,13 +262,23 @@ class Monitor(ub.NiceRepr):
 
         improved_keys = monitor._improved(_smooth_metrics, monitor._best_smooth_metrics)
         if improved_keys:
-            if monitor._best_smooth_metrics is None:
-                monitor._best_smooth_metrics = _smooth_metrics.copy()
-                monitor._best_raw_metrics = _raw_metrics.copy()
-            else:
-                for key in improved_keys:
-                    monitor._best_smooth_metrics[key] = _smooth_metrics[key]
-                    monitor._best_raw_metrics[key] = _raw_metrics[key]
+
+            ignore_this_epoch = False
+            if monitor._current_epoch is not None:
+                # If we are ignoring the monitor in the first few epochs then
+                # dont store the metrics
+                if monitor._current_epoch < monitor.ignore_first_epochs:
+                    ignore_this_epoch = True
+
+            if not ignore_this_epoch:
+                if monitor._best_smooth_metrics is None:
+                    monitor._best_smooth_metrics = _smooth_metrics.copy()
+                    monitor._best_raw_metrics = _raw_metrics.copy()
+                else:
+                    for key in improved_keys:
+                        monitor._best_smooth_metrics[key] = _smooth_metrics[key]
+                        monitor._best_raw_metrics[key] = _raw_metrics[key]
+
             monitor._best_epoch = epoch
             monitor._n_bad_epochs = 0
         else:
@@ -277,7 +325,6 @@ class Monitor(ub.NiceRepr):
         monitor.rel_threshold = 1e-6
         rel_epsilon = 1.0 - monitor.rel_threshold
         improved_flags = (sign1 * current) < (rel_epsilon * sign2 * best)
-        # * rel_epsilon
 
         improved_keys = list(ub.compress(keys, improved_flags))
         return improved_keys
@@ -394,21 +441,35 @@ class Monitor(ub.NiceRepr):
             >>> monitor = demodata_monitor()
             >>> ranked_epochs = monitor._rank('loss', smooth=False)
             >>> ranked_epochs = monitor._rank('miou', smooth=True)
+
+            >>> monitor = demodata_monitor(ignore_first_epochs=10)
+            >>> ranked_epochs = monitor._rank('loss', smooth=False)
+            >>> assert 1 not in ranked_epochs
+            >>> ranked_epochs = monitor._rank('miou', smooth=True)
+            >>> assert 1 not in ranked_epochs
         """
         if smooth:
             metrics = monitor._smooth_metrics
         else:
             metrics = monitor._raw_metrics
 
-        values = [m[key] for m in metrics]
-        sortx = np.argsort(values)
+        epochs = np.array(monitor._epochs)
+        values = np.array([m[key] for m in metrics])
+        is_valid = np.array(
+            [False if e is None else
+             int(e) >= int(monitor.ignore_first_epochs)
+             for e in monitor._epochs], dtype=bool)
+
+        valid_values = values[is_valid]
+        valid_epochs = epochs[is_valid]
+
         if key in monitor.maximize:
-            sortx = np.argsort(values)[::-1]
+            valid_sortx = np.argsort(valid_values)[::-1]
         elif key in monitor.minimize:
-            sortx = np.argsort(values)
+            valid_sortx = np.argsort(valid_values)
         else:
             raise KeyError(type)
-        ranked_epochs = np.array(monitor._epochs)[sortx]
+        ranked_epochs = valid_epochs[valid_sortx]
         return ranked_epochs
 
     def _BROKEN_rank_epochs(monitor):

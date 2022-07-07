@@ -62,7 +62,7 @@ from .util_idstr import (compact_idstr, make_idstr, make_short_idstr,)
 from .util_inspect import (default_kwargs,)
 from .util_io import (read_arr, read_h5arr, write_arr, write_h5arr,)
 from .util_iter import (roundrobin,)
-from .util_json import (IndexableWalker, LossyJSONEncoder, NumpyEncoder,
+from .util_json import (LossyJSONEncoder, NumpyEncoder,
                         ensure_json_serializable, read_json, walk_json,
                         write_json,)
 from .util_misc import (FlatIndexer, SupressPrint, align, align_lines,
@@ -80,7 +80,7 @@ from .util_zip import (split_archive, zopen,)
 
 __all__ = ['BatchNormContext', 'CumMovingAve', 'DisableBatchNorm',
            'ExpMovingAve', 'FlatIndexer', 'IS_PROFILING', 'IgnoreLayerContext',
-           'IndexableWalker', 'InternalRunningStats', 'LossyJSONEncoder',
+           'InternalRunningStats', 'LossyJSONEncoder',
            'ModuleMixin', 'MovingAve', 'NumpyEncoder', 'RunningStats',
            'SlidingWindow', 'Stitcher', 'SupressPrint', 'WindowedMovingAve',
            'absdev', 'adjust_gamma', 'adjust_subplots', 'aggensure', 'align',

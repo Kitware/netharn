@@ -524,7 +524,7 @@ class HyperParams(object):
         return model
 
     def make_optimizer(hyper, named_parameters):
-        """
+        r"""
         Instantiate the optimizer defined by the hyperparams
 
         Contains special logic to create param groups

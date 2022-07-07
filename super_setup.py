@@ -251,6 +251,8 @@ class Repo(ub.NiceRepr):
         >>> repo._cmd('./run_doctests.sh')
         repo = <Repo('ubelt')>
 
+    Example:
+        >>> # xdoctest: +SKIP
         >>> # Here is a less simple example referencing ubelt
         >>> from super_setup import *
         >>> import ubelt as ub
@@ -472,6 +474,7 @@ class Repo(ub.NiceRepr):
         Look for a "dev" branch with a higher version number and switch to that.
 
         Example:
+            >>> # xdoctest: +SKIP
             >>> from super_setup import *
             >>> import ubelt as ub
             >>> repo = Repo.demo()
@@ -850,7 +853,7 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwarray.git'},
     },
     {
-        'name': 'kwimage', 'branch': 'dev/0.8.3', 'remote': 'origin',
+        'name': 'kwimage', 'branch': 'dev/0.8.7', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwimage.git'},
     },
     # TODO:
@@ -859,11 +862,11 @@ DEVEL_REPOS = [
     #     'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwannot.git'},
     # },
     {
-        'name': 'kwcoco', 'branch': 'dev/0.2.26', 'remote': 'origin',
+        'name': 'kwcoco', 'branch': 'dev/0.2.32', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.12', 'remote': 'origin',
+        'name': 'kwplot', 'branch': 'dev/0.4.13', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
@@ -883,13 +886,13 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.6.7', 'remote': 'origin',
+        'name': 'ndsampler', 'branch': 'dev/0.6.8', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
     # netharn - training harness
     {
-        'name': 'netharn', 'branch': 'dev/0.5.18', 'remote': 'origin',
+        'name': 'netharn', 'branch': 'dev/0.5.19', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/netharn.git'},
     },
 ]

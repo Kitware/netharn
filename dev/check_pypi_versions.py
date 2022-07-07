@@ -5,8 +5,11 @@ pip install version-query
 pip install yolk3k
 """
 # import yolk
-from distutils.version import LooseVersion
 import ubelt as ub
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 def query_module_pypi_info(modname, verbose=0):

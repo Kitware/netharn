@@ -153,7 +153,6 @@ import traceback
 from os.path import join
 from os.path import exists
 from os.path import dirname
-from distutils.version import LooseVersion
 
 import torch
 import numpy as np
@@ -168,6 +167,15 @@ from netharn.util import profiler
 from netharn.util import strip_ansi
 from netharn.exceptions import (CannotResume, SkipBatch, StopTraining,
                                 TrainingDiverged)
+
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
+
+# Hack: patch collections so tensorboard_logger doesnt die
+from netharn import monkey  # NOQA
 try:
     import tensorboard_logger
 except ImportError:
@@ -333,18 +341,22 @@ class ExtraMixins(object):
         References:
             https://github.com/pytorch/pytorch/issues/1355
         """
-        import cv2
         n_workers = max(loader.num_workers for loader in harn.loaders.values()
                         if loader is not None)
         if n_workers > 1:
-            n_threads = cv2.getNumThreads()
-            if n_threads > 1:
-                msg = ('OpenCV threadcount of {} is non-zero and a DataLoader '
-                       'is using {} workers. This may cause deadlocks '
-                       'To be safe use cv2.setNumThreads(0)').format(
-                           n_threads, n_workers)
-                warnings.warn(msg, RuntimeWarning)
-                harn.warn(msg)
+            try:
+                import cv2
+            except ImportError:
+                pass
+            else:
+                n_threads = cv2.getNumThreads()
+                if n_threads > 1:
+                    msg = ('OpenCV threadcount of {} is non-zero and a DataLoader '
+                           'is using {} workers. This may cause deadlocks '
+                           'To be safe use cv2.setNumThreads(0)').format(
+                               n_threads, n_workers)
+                    warnings.warn(msg, RuntimeWarning)
+                    harn.warn(msg)
 
 
 @register_mixin

@@ -723,7 +723,7 @@ def setup_harn(cmdline=True, **kw):
         _dset = torch_datasets['train']
         stats_idxs = kwarray.shuffle(np.arange(len(_dset)), rng=0)[0:min(1000, len(_dset))]
         stats_subset = torch.utils.data.Subset(_dset, stats_idxs)
-        cacher = ub.Cacher('dset_mean', cfgstr=_dset.input_id + 'v2')
+        cacher = ub.Cacher('dset_mean', depends=_dset.input_id + 'v2')
         input_stats = cacher.tryload()
         if input_stats is None:
             # Use parallel workers to load data faster
@@ -893,7 +893,7 @@ if __name__ == '__main__':
             --workers=4 --xpu=auto --batch_size=4 --bstep=4
 
         python -m netharn.examples.object_detection \
-            --nice=voc-detection-demo \
+            --name=voc-detection-demo \
             --train_dataset=~/data/VOC/voc-trainval.mscoco.json \
             --vali_dataset=~/data/VOC/voc-test-2007.mscoco.json \
             --pretrained=imagenet \

@@ -10,11 +10,17 @@ import numpy as np
 from collections import OrderedDict
 from netharn.analytic.output_shape_for import OutputShapeFor
 from netharn.analytic import analytic_for
-from distutils.version import LooseVersion
 # try:
 # from netharn.device import MountedModel
 # except ImportError:
 #     MountedModel = None
+
+
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
+
 
 REGISTERED_TYPES = []
 

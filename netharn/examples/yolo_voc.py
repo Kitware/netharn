@@ -657,7 +657,7 @@ def setup_yolo_harness(bsize=16, workers=0):
 
     xpu = nh.XPU.coerce('argv')
 
-    nice = ub.argval('--nice', default='Yolo2Baseline')
+    nice = ub.argval('--name', default='Yolo2Baseline')
     batch_size = int(ub.argval('--batch_size', default=bsize))
     bstep = int(ub.argval('--bstep', 4))
     workers = int(ub.argval('--workers', default=workers))
@@ -840,43 +840,43 @@ if __name__ == '__main__':
     r"""
     CommandLine:
         srun -c 4 -p priority --gres=gpu:1 \
-            python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --nice=rescaled --lr=0.001 --bstep=4 --workers=4
+            python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --name=rescaled --lr=0.001 --bstep=4 --workers=4
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --nice=new_loss_v2 --lr=0.001 --bstep=4 --workers=4
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --name=new_loss_v2 --lr=0.001 --bstep=4 --workers=4
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --nice=eav_run --lr=0.001 --bstep=4 --workers=6 --eav
-        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --nice=pjr_run2 --lr=0.001 --bstep=4 --workers=6
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=16 --name=eav_run --lr=0.001 --bstep=4 --workers=6 --eav
+        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --name=pjr_run2 --lr=0.001 --bstep=4 --workers=6
 
-        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --nice=fixed_nms --lr=0.001 --bstep=4 --workers=6
+        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --name=fixed_nms --lr=0.001 --bstep=4 --workers=6
 
-        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --nice=fixed_lrs --lr=0.001 --bstep=4 --workers=6
-
-
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=eav_run2 --lr=0.001 --bstep=4 --workers=8 --eav
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=pjr_run2 --lr=0.001 --bstep=4 --workers=4
-
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=4 --nice=pjr_run2 --lr=0.001 --bstep=8 --workers=4
-
-        python -m netharn.examples.yolo_voc train --gpu=0,1 --batch_size=32 --nice=july23 --lr=0.001 --bstep=2 --workers=8
-        python -m netharn.examples.yolo_voc train --gpu=2 --batch_size=16 --nice=july23_lr_x8 --lr=0.008 --bstep=4 --workers=6
-
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=batchaware2 --lr=0.001 --bstep=8 --workers=3
-
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=july_eav_run3 --lr=0.001 --bstep=8 --workers=6 --eav
-        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=8 --nice=july_eav_run4 --lr=0.002 --bstep=8 --workers=6 --eav
-        python -m netharn.examples.yolo_voc train --gpu=2 --batch_size=16 --nice=july_pjr_run4 --lr=0.001 --bstep=4 --workers=6
+        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=16 --name=fixed_lrs --lr=0.001 --bstep=4 --workers=6
 
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=july_eav_run4_hack1 --lr=0.001 --bstep=8 --workers=6 --eav --weights=/home/local/KHQ/jon.crall/work/voc_yolo2/fit/nice/july_eav_run_hack/torch_snapshots/_epoch_00000150.pt
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=eav_run2 --lr=0.001 --bstep=4 --workers=8 --eav
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=pjr_run2 --lr=0.001 --bstep=4 --workers=4
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=lightnet_start --lr=0.001 --bstep=8 --workers=6 --eav --weights=lightnet
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=4 --name=pjr_run2 --lr=0.001 --bstep=8 --workers=4
+
+        python -m netharn.examples.yolo_voc train --gpu=0,1 --batch_size=32 --name=july23 --lr=0.001 --bstep=2 --workers=8
+        python -m netharn.examples.yolo_voc train --gpu=2 --batch_size=16 --name=july23_lr_x8 --lr=0.008 --bstep=4 --workers=6
+
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=batchaware2 --lr=0.001 --bstep=8 --workers=3
+
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=july_eav_run3 --lr=0.001 --bstep=8 --workers=6 --eav
+        python -m netharn.examples.yolo_voc train --gpu=1 --batch_size=8 --name=july_eav_run4 --lr=0.002 --bstep=8 --workers=6 --eav
+        python -m netharn.examples.yolo_voc train --gpu=2 --batch_size=16 --name=july_pjr_run4 --lr=0.001 --bstep=4 --workers=6
 
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=HOPE --lr=0.001 --bstep=8 --workers=6 --eav --weights=imagenet
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=HOPE2 --lr=0.001 --bstep=8 --workers=6 --eav --weights=imagenet
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=HOPE3 --lr=0.001 --bstep=8 --workers=4 --eav --weights=imagenet
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=july_eav_run4_hack1 --lr=0.001 --bstep=8 --workers=6 --eav --weights=/home/local/KHQ/jon.crall/work/voc_yolo2/fit/nice/july_eav_run_hack/torch_snapshots/_epoch_00000150.pt
 
-        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --nice=HOPE4 --lr=0.001 --bstep=8 --workers=4 --eav --weights=imagenet
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=lightnet_start --lr=0.001 --bstep=8 --workers=6 --eav --weights=lightnet
+
+
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=HOPE --lr=0.001 --bstep=8 --workers=6 --eav --weights=imagenet
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=HOPE2 --lr=0.001 --bstep=8 --workers=6 --eav --weights=imagenet
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=HOPE3 --lr=0.001 --bstep=8 --workers=4 --eav --weights=imagenet
+
+        python -m netharn.examples.yolo_voc train --gpu=0 --batch_size=8 --name=HOPE4 --lr=0.001 --bstep=8 --workers=4 --eav --weights=imagenet
 
 
         python -m netharn.examples.yolo_voc train --gpu=0 --workers=4 --weights=lightnet

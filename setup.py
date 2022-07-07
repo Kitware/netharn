@@ -3,19 +3,22 @@
 # NOTE: pip install -U --pre h5py
 from __future__ import absolute_import, division, print_function
 import sys
-from os.path import dirname
 from setuptools import find_packages
 from os.path import exists
-from os.path import join
-import glob
-import os
 from setuptools import setup
-# from skbuild import setup
 
 
 def parse_version(fpath):
     """
     Statically parse the version number from a python file
+    """
+    value = static_parse('__version__', fpath)
+    return value
+
+
+def static_parse(varname, fpath):
+    """
+    Statically parse the a constant variable from a python file
     """
     import ast
     if not exists(fpath):
@@ -23,14 +26,20 @@ def parse_version(fpath):
     with open(fpath, 'r') as file_:
         sourcecode = file_.read()
     pt = ast.parse(sourcecode)
-    class VersionVisitor(ast.NodeVisitor):
+    class StaticVisitor(ast.NodeVisitor):
         def visit_Assign(self, node):
             for target in node.targets:
-                if getattr(target, 'id', None) == '__version__':
-                    self.version = node.value.s
-    visitor = VersionVisitor()
+                if getattr(target, 'id', None) == varname:
+                    self.static_value = node.value.s
+    visitor = StaticVisitor()
     visitor.visit(pt)
-    return visitor.version
+    try:
+        value = visitor.static_value
+    except AttributeError:
+        import warnings
+        value = 'Unknown {}'.format(varname)
+        warnings.warn(value)
+    return value
 
 
 def parse_description():
@@ -45,97 +54,103 @@ def parse_description():
     readme_fpath = join(dirname(__file__), 'README.rst')
     # This breaks on pip install, so check that it exists.
     if exists(readme_fpath):
-        try:
-            with open(readme_fpath, 'r') as f:
-                text = f.read()
-            return text
-        except Exception as ex:
-            import warnings
-            warnings.warn('unable to parse existing readme: {!r}'.format(ex))
+        with open(readme_fpath, 'r') as f:
+            text = f.read()
+        return text
     return ''
 
 
-def parse_requirements(fname='requirements.txt', with_version=False):
+def parse_requirements(fname='requirements.txt', versions=False):
     """
     Parse the package dependencies listed in a requirements file but strips
     specific versioning information.
 
     Args:
         fname (str): path to requirements file
-        with_version (bool, default=False): if true include version specs
+        versions (bool | str, default=False):
+            If true include version specs.
+            If strict, then pin to the minimum version.
 
     Returns:
         List[str]: list of requirements items
-
-    References:
-        https://pip.readthedocs.io/en/1.1/requirements.html
-
-    CommandLine:
-        python -c "import setup; print(setup.parse_requirements())"
-        python -c "import setup; print(chr(10).join(setup.parse_requirements(with_version=True)))"
     """
-    from os.path import exists
+    from os.path import exists, dirname, join
     import re
     require_fpath = fname
 
-    def parse_line(line, base='.'):
+    def parse_line(line, dpath=''):
         """
         Parse information from a line in a requirements text file
+
+        line = 'git+https://a.com/somedep@sometag#egg=SomeDep'
+        line = '-e git+https://a.com/somedep@sometag#egg=SomeDep'
         """
-        if line.startswith(('-f ', '--find-links ', '--index-url ')):
-            import warnings
-            warnings.warn(
-                'requirements file specified alternative index urls, but '
-                'there is currently no way to support this in setuptools')
-        elif line.startswith('-r '):
+        # Remove inline comments
+        comment_pos = line.find(' #')
+        if comment_pos > -1:
+            line = line[:comment_pos]
+
+        if line.startswith('-r '):
             # Allow specifying requirements in other files
-            new_fname = line.split(' ')[1]
-            new_fpath = join(base, new_fname)
-            for info in parse_require_file(new_fpath):
+            target = join(dpath, line.split(' ')[1])
+            for info in parse_require_file(target):
                 yield info
         else:
+            # See: https://www.python.org/dev/peps/pep-0508/
             info = {'line': line}
             if line.startswith('-e '):
                 info['package'] = line.split('#egg=')[1]
             else:
+                if ';' in line:
+                    pkgpart, platpart = line.split(';')
+                    # Handle platform specific dependencies
+                    # setuptools.readthedocs.io/en/latest/setuptools.html
+                    # #declaring-platform-specific-dependencies
+                    plat_deps = platpart.strip()
+                    info['platform_deps'] = plat_deps
+                else:
+                    pkgpart = line
+                    platpart = None
+
                 # Remove versioning from the package
                 pat = '(' + '|'.join(['>=', '==', '>']) + ')'
-                parts = re.split(pat, line, maxsplit=1)
+                parts = re.split(pat, pkgpart, maxsplit=1)
                 parts = [p.strip() for p in parts]
 
                 info['package'] = parts[0]
                 if len(parts) > 1:
                     op, rest = parts[1:]
-                    if ';' in rest:
-                        # Handle platform specific dependencies
-                        # http://setuptools.readthedocs.io/en/latest/setuptools.html#declaring-platform-specific-dependencies
-                        version, platform_deps = map(str.strip, rest.split(';'))
-                        info['platform_deps'] = platform_deps
-                    else:
-                        version = rest  # NOQA
+                    version = rest  # NOQA
                     info['version'] = (op, version)
             yield info
 
     def parse_require_file(fpath):
-        base = dirname(fpath)
+        dpath = dirname(fpath)
         with open(fpath, 'r') as f:
             for line in f.readlines():
                 line = line.strip()
                 if line and not line.startswith('#'):
-                    for info in parse_line(line, base):
+                    for info in parse_line(line, dpath=dpath):
                         yield info
 
     def gen_packages_items():
         if exists(require_fpath):
             for info in parse_require_file(require_fpath):
                 parts = [info['package']]
-                if with_version and 'version' in info:
-                    parts.extend(info['version'])
+                if versions and 'version' in info:
+                    if versions == 'strict':
+                        # In strict mode, we pin to the minimum version
+                        if info['version']:
+                            # Only replace the first >= instance
+                            verstr = ''.join(info['version']).replace('>=', '==', 1)
+                            parts.append(verstr)
+                    else:
+                        parts.extend(info['version'])
                 if not sys.version.startswith('3.4'):
                     # apparently package_deps are broken in 3.4
-                    platform_deps = info.get('platform_deps')
-                    if platform_deps is not None:
-                        parts.append(';' + platform_deps)
+                    plat_deps = info.get('platform_deps')
+                    if plat_deps is not None:
+                        parts.append(';' + plat_deps)
                 item = ''.join(parts)
                 yield item
 
@@ -143,96 +158,35 @@ def parse_requirements(fname='requirements.txt', with_version=False):
     return packages
 
 
-def clean_repo(repodir, modname, rel_paths=[]):
-    """
-    repodir = ub.expandpath('~/code/netharn/')
-    modname = 'netharn'
-    rel_paths = [
-        'netharn/util/nms/cpu_nms.c',
-        'netharn/util/nms/cpu_nms.c',
-        'netharn/util/nms/cpu_nms.cpp',
-        'netharn/util/nms/cython_boxes.c',
-        'netharn/util/nms/cython_boxes.html',
-    ]
-    """
-    print('cleaning repo: {}/{}'.format(repodir, modname))
-    toremove = []
-    for root, dnames, fnames in os.walk(repodir):
-
-        if os.path.basename(root) == modname + '.egg-info':
-            toremove.append(root)
-            del dnames[:]
-
-        if os.path.basename(root) == '__pycache__':
-            toremove.append(root)
-            del dnames[:]
-
-        if os.path.basename(root) == '_ext':
-            # Remove torch extensions
-            toremove.append(root)
-            del dnames[:]
-
-        if os.path.basename(root) == 'build':
-            # Remove python c extensions
-            if len(dnames) == 1 and dnames[0].startswith('temp.'):
-                toremove.append(root)
-                del dnames[:]
-
-        # Remove simple pyx inplace extensions
-        for fname in fnames:
-            if fname.endswith('.pyc'):
-                toremove.append(join(root, fname))
-            if fname.endswith(('.so', '.c', '.o')):
-                if fname.split('.')[0] + '.pyx' in fnames:
-                    toremove.append(join(root, fname))
-
-    def enqueue(d):
-        if exists(d) and d not in toremove:
-            toremove.append(d)
-
-    import six
-    if six.PY2:
-        abs_paths = [join(repodir, p) for pat in rel_paths
-                     for p in glob.glob(pat)]
-    else:
-        abs_paths = [join(repodir, p) for pat in rel_paths
-                     for p in glob.glob(pat, recursive=True)]
-    for abs_path in abs_paths:
-        enqueue(abs_path)
-
-    import ubelt as ub
-    for dpath in toremove:
-        # print('Removing dpath = {!r}'.format(dpath))
-        ub.delete(dpath, verbose=1)
-
-
-def clean():
-    """
-    __file__ = ub.expandpath('~/code/netharn/setup.py')
-    """
-    modname = 'netharn'
-    repodir = dirname(__file__)
-    rel_paths = [
-        'htmlcov',
-        '_skbuild',
-        '_build_wheel',
-        'netharn.egg-info',
-        'dist',
-        'build',
-        '**/*.pyc',
-        'profile*'
-        'pip-wheel-metadata',
-    ]
-    clean_repo(repodir, modname, rel_paths)
-
-
 VERSION = version = parse_version('netharn/__init__.py')  # needs to be a global var for git tags
 NAME = 'netharn'
 
 if __name__ == '__main__':
-    if 'clean' in sys.argv:
-        clean()
-        # sys.exit(0)
+
+    setupkw = {}
+    setupkw["install_requires"] = parse_requirements("requirements/runtime.txt")
+    setupkw["extras_require"] = {
+        "all": parse_requirements("requirements.txt"),
+        "tests": parse_requirements("requirements/tests.txt"),
+        "optional": parse_requirements("requirements/optional.txt"),
+        "headless": parse_requirements("requirements/headless.txt"),
+        "graphics": parse_requirements("requirements/graphics.txt"),
+        # Strict versions
+        "headless-strict": parse_requirements(
+            "requirements/headless.txt", versions="strict"
+        ),
+        "graphics-strict": parse_requirements(
+            "requirements/graphics.txt", versions="strict"
+        ),
+        "all-strict": parse_requirements("requirements.txt", versions="strict"),
+        "runtime-strict": parse_requirements(
+            "requirements/runtime.txt", versions="strict"
+        ),
+        "tests-strict": parse_requirements("requirements/tests.txt", versions="strict"),
+        "optional-strict": parse_requirements(
+            "requirements/optional.txt", versions="strict"
+        ),
+    }
 
     setup(
         name=NAME,
@@ -243,16 +197,11 @@ if __name__ == '__main__':
         description='Train and deploy pytorch models',
         long_description=parse_description(),
         long_description_content_type='text/x-rst',
-        install_requires=parse_requirements('requirements/runtime.txt'),
-        extras_require={
-            'all': parse_requirements('requirements.txt'),
-            'optional': parse_requirements('requirements/optional.txt'),
-            'tests': parse_requirements('requirements/tests.txt'),
-        },
         packages=find_packages(include='netharn.*'),
         package_data={
             'netharn.initializers._nx_ext_v2': ['*.pyx'],
         },
+        python_requires='>=3.6',
         license='Apache 2',
         classifiers=[
             # List of classifiers available at:
@@ -268,6 +217,11 @@ if __name__ == '__main__':
             # This should be interpreted as Apache License v2.0
             'License :: OSI Approved :: Apache Software License',
             # Supported Python versions
-            'Programming Language :: Python :: 3',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9',
+            'Programming Language :: Python :: 3.10',
         ],
+        **setupkw,
     )

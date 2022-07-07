@@ -9,7 +9,10 @@ The purpose of this file is to contain functions that might not general-purpose
 enough to add to FitHarn itself, but they are also common enough, where it
 makes no sense to write them from scratch for each new project.
 """
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 def _dump_monitor_tensorboard(harn, mode='epoch', special_groupers=['loss'],

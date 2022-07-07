@@ -246,7 +246,7 @@ def setup_harn(cmdline=True, **kwargs):
     config.load(cmdline=cmdline)
     nh.configure_hacks(config)  # fix opencv bugs
 
-    cacher = ub.Cacher('tiny-imagenet', cfgstr='v4', verbose=3)
+    cacher = ub.Cacher('tiny-imagenet', depends='v4', verbose=3)
     data = cacher.tryload()
     if data is None:
         data = grab_tiny_imagenet_as_coco()

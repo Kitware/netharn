@@ -66,12 +66,16 @@ class MatchingSamplerPK(ub.NiceRepr, torch.utils.data.sampler.BatchSampler):
             # For each of these any negative could be chosen
             # The number of distinct triples contributed by this PCC is the
             # product of num_pos_edges and num_neg_edges.
-            import scipy
+            import scipy  # NOQA
+            try:
+                from scipy.special import comb
+            except ImportError:
+                from scipy.misc import comb
             self.num_triples = 0
             self.num_pos_edges = 0
             default_num_batches = 0
             for pcc in ub.ProgIter(self.pccs, 'pccs',  enabled=0):
-                num_pos_edges = scipy.special.comb(len(pcc), 2)
+                num_pos_edges = comb(len(pcc), 2)
                 if num_pos_edges > 0:
                     default_num_batches += len(pcc)
                 other_pccs = [c for c in self.pccs if c is not pcc]

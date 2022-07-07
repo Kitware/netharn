@@ -2,7 +2,10 @@
 import torch  # NOQA
 import torch.nn.functional as F
 import torch.nn.modules
-from distutils.version import LooseVersion
+try:  # nocover
+    from packaging.version import parse as LooseVersion
+except ImportError:
+    from distutils.version import LooseVersion
 
 
 if LooseVersion(torch.__version__) < LooseVersion('1.0.0'):

@@ -7,7 +7,7 @@ MS-COCO dataset see segmentation.py.
 NOTE: This will eventually be deprecated and repalced by "segmentation.py"
 
 CommandLine:
-    python ~/code/netharn/examples/sseg_camvid.py --workers=4 --xpu=0 --batch_size=2 --nice=expt1
+    python ~/code/netharn/examples/sseg_camvid.py --workers=4 --xpu=0 --batch_size=2 --name=expt1
 """
 from __future__ import absolute_import, division, print_function, unicode_literals
 from os.path import join
@@ -840,7 +840,7 @@ def _cached_class_frequency(dset):
     dset_copy.augmenter = None
 
     cfgstr = '_'.join([dset_copy.sampler.dset.hashid, 'v1'])
-    cacher = ub.Cacher('class_freq', cfgstr=cfgstr)
+    cacher = ub.Cacher('class_freq', depends=cfgstr)
     total_freq = cacher.tryload()
     if total_freq is None:
 
@@ -1102,19 +1102,19 @@ if __name__ == '__main__':
     CommandLine:
 
         python -m netharn.examples.sseg_camvid \
-                --nice=camvid_segnet --arch=segnet --init=cls \
+                --name=camvid_segnet --arch=segnet --init=cls \
                 --workers=4 --xpu=auto  \
                 --batch_size=16 --lr=1e-3 \
                 --input_dims=64,64
 
         python -m netharn.examples.sseg_camvid \
-                --nice=camvid_psp --arch=psp --init=cls \
+                --name=camvid_psp --arch=psp --init=cls \
                 --workers=4 --xpu=auto  \
                 --batch_size=16 --lr=1e-3 \
                 --input_dims=64,64
 
         python -m netharn.examples.sseg_camvid \
-                --nice=camvid_deeplab --arch=deeplab --init=cls \
+                --name=camvid_deeplab --arch=deeplab --init=cls \
                 --workers=4 --xpu=auto  \
                 --batch_size=16 --lr=1e-3 \
                 --input_dims=64,64
