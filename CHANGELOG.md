@@ -4,7 +4,10 @@ This changelog follows the specifications detailed in: [Keep a Changelog](https:
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html), although we have not yet reached a `1.0.0` release.
 
 
-## Version 0.5.19 - Unreleased
+## Version 0.6.1 - Unreleased
+
+
+## Version 0.5.19 - Released 2022-07-06
 
 ### Added
 * Ability to ignore the first N epochs when choosing the best model via the `ignore_first` config.
