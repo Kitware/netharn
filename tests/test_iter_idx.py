@@ -95,6 +95,7 @@ def test_iter_idx():
 
     try:
         import tensorboard  # NOQA
+        from tensorboard.backend.event_processing import event_accumulator  # NOQA
     except Exception:
         use_tensorboard = False
     else:
