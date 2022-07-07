@@ -92,8 +92,16 @@ def test_iter_idx():
         'monitor'    : (nh.Monitor, {'max_epoch': 10}),
     }
     harn1 = MyHarn(hyper=hyper)
-    harn1.preferences['use_tensorboard'] = True
-    harn1.preferences['eager_dump_tensorboard'] = True
+
+    try:
+        import tensorboard  # NOQA
+    except Exception:
+        use_tensorboard = False
+    else:
+        use_tensorboard = True
+
+    harn1.preferences['use_tensorboard'] = use_tensorboard
+    harn1.preferences['eager_dump_tensorboard'] = use_tensorboard
 
     harn1.intervals['log_iter_train'] = 1
     harn1.intervals['log_iter_vali'] = 1
