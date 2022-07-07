@@ -13,13 +13,13 @@ import ubelt as ub
 __all__ = ['Monitor']
 
 
-def demodata_monitor(ignore_first=0):
+def demodata_monitor(ignore_first_epochs=0):
     rng = np.random.RandomState(0)
     n = 300
     losses = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)[::-1]
     mious = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)
     monitor = Monitor(minimize=['loss'], maximize=['miou'], smoothing=0.0,
-                      ignore_first=ignore_first)
+                      ignore_first_epochs=ignore_first_epochs)
     for epoch, (loss, miou) in enumerate(zip(losses, mious)):
         monitor.update(epoch, {'loss': loss, 'miou': miou})
     return monitor
@@ -41,7 +41,7 @@ class Monitor(ub.NiceRepr):
             to wait before quiting if the quality metrics are not improving.
         min_lr (float): If specified stop learning after lr drops beyond this
             point
-        ignore_first (int): If specified, ignore the results from the
+        ignore_first_epochs (int): If specified, ignore the results from the
             first few epochs. Determine what the best model is after this
             point.
 
@@ -67,7 +67,7 @@ class Monitor(ub.NiceRepr):
         >>> n = 300
         >>> losses = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)[::-1]
         >>> mious = (sorted(rng.randint(10, n, size=n)) + rng.randint(0, 20, size=n) - 10)
-        >>> monitor = Monitor(minimize=['loss'], smoothing=.6, ignore_first=3)
+        >>> monitor = Monitor(minimize=['loss'], smoothing=.6, ignore_first_epochs=3)
         >>> monitor.update(0, {'loss': 0.001})
         >>> monitor.update(1, {'loss': 9.40})
         >>> monitor.update(2, {'loss': 1.40})
@@ -89,7 +89,7 @@ class Monitor(ub.NiceRepr):
     """
 
     def __init__(monitor, minimize=['loss'], maximize=[], smoothing=0.0,
-                 patience=None, max_epoch=1000, min_lr=None, ignore_first=0):
+                 patience=None, max_epoch=1000, min_lr=None, ignore_first_epochs=0):
 
         # Internal attributes
         monitor._ewma = util.ExpMovingAve(alpha=1 - smoothing)
@@ -114,7 +114,7 @@ class Monitor(ub.NiceRepr):
         monitor.patience = patience
         monitor.max_epoch = max_epoch
         monitor.min_lr = min_lr
-        monitor.ignore_first = ignore_first
+        monitor.ignore_first_epochs = ignore_first_epochs
 
     def __nice__(self):
         import ubelt as ub
@@ -122,7 +122,7 @@ class Monitor(ub.NiceRepr):
             'patience': self.patience,
             'max_epoch': self.max_epoch,
             'min_lr': self.min_lr,
-            'ignore_first': self.ignore_first,
+            'ignore_first_epochs': self.ignore_first_epochs,
         }, nl=0)
 
     @classmethod
@@ -139,7 +139,7 @@ class Monitor(ub.NiceRepr):
             >>> cls, initkw = Monitor.coerce(config)
             >>> print('initkw = {}'.format(ub.repr2(initkw, nl=1)))
             initkw = {
-                'ignore_first': 0,
+                'ignore_first_epochs': 0,
                 'max_epoch': 100,
                 'min_lr': 1e-05,
                 'minimize': ['loss'],
@@ -154,7 +154,7 @@ class Monitor(ub.NiceRepr):
             'max_epoch': max_epoch,
             'patience': config.get('patience', max_epoch),
             'min_lr': config.get('min_lr', None),
-            'ignore_first': config.get('ignore_first', 0),
+            'ignore_first_epochs': config.get('ignore_first_epochs', 0),
         })
 
     def show(monitor):
@@ -267,7 +267,7 @@ class Monitor(ub.NiceRepr):
             if monitor._current_epoch is not None:
                 # If we are ignoring the monitor in the first few epochs then
                 # dont store the metrics
-                if monitor._current_epoch < monitor.ignore_first:
+                if monitor._current_epoch < monitor.ignore_first_epochs:
                     ignore_this_epoch = True
 
             if not ignore_this_epoch:
@@ -442,7 +442,7 @@ class Monitor(ub.NiceRepr):
             >>> ranked_epochs = monitor._rank('loss', smooth=False)
             >>> ranked_epochs = monitor._rank('miou', smooth=True)
 
-            >>> monitor = demodata_monitor(ignore_first=10)
+            >>> monitor = demodata_monitor(ignore_first_epochs=10)
             >>> ranked_epochs = monitor._rank('loss', smooth=False)
             >>> assert 1 not in ranked_epochs
             >>> ranked_epochs = monitor._rank('miou', smooth=True)
@@ -457,7 +457,7 @@ class Monitor(ub.NiceRepr):
         values = np.array([m[key] for m in metrics])
         is_valid = np.array(
             [False if e is None else
-             int(e) >= int(monitor.ignore_first)
+             int(e) >= int(monitor.ignore_first_epochs)
              for e in monitor._epochs], dtype=bool)
 
         valid_values = values[is_valid]

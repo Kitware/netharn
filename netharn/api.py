@@ -827,8 +827,12 @@ def configure_hacks(config={}, **kw):
     config = _update_defaults(config, kw)
 
     if config.get('workers', 0) > 0:
-        import cv2
-        cv2.setNumThreads(0)
+        try:
+            import cv2
+        except ImportError:
+            pass
+        else:
+            cv2.setNumThreads(0)
 
     strat = config.get('sharing_strategy', None)
     if strat is not None and strat != 'default':
