@@ -6,6 +6,7 @@ try:
     _Augmenter = imgaug.augmenters.Augmenter
 except Exception:
     # imgaug is deprecated, don't warn and dont use
+    imgaug = None
     if 0:
         import warnings
         warnings.warn('imgaug is not availble', DeprecationWarning)
@@ -18,6 +19,8 @@ class ParamatarizedAugmenter(_Augmenter):
     """
 
     def __init__(self, *args, **kwargs):
+        if imgaug is None:
+            raise Exception('imgaug is not available, but is needed to create an instance of ParamatarizedAugmenter. Moving away from imgaug is encouraged')
         super(ParamatarizedAugmenter, self).__setattr__('_initialized', True)
         super(ParamatarizedAugmenter, self).__setattr__('_registered_params', OrderedDict())
         super(ParamatarizedAugmenter, self).__init__(*args, **kwargs)
