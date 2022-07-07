@@ -1,4 +1,4 @@
-"""
+r"""
 NOTICE: ``netharn.export`` has been refactored into the packages ``liberator``
 which performs general code extraction and ``torch_liberator`` which is
 specific to pytorch. This module is deprecated and will be removed in the
@@ -111,6 +111,7 @@ Example:
     >>> # Training dpath. (Note the directory structure setup by netharn is
     >>> # itself a deployment, it just has multiple files)
     >>> deployer = torch_liberator.DeployedModel(harn.train_dpath)
+    >>> print('deployer.info = {}'.format(ub.repr2(deployer.info, nl=1)))
     >>> # Use the DeployedModel to package the imporant info in train_dpath
     >>> # into a standalone zipfile.
     >>> zip_fpath = deployer.package()

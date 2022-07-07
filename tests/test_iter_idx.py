@@ -79,7 +79,7 @@ def test_iter_idx():
     hyper = {
         # --- data first
         'datasets'    : datasets,
-        'nice'        : 'test_iter_idx',
+        'name'        : 'test_iter_idx',
         'workdir'     : ub.ensure_app_cache_dir('netharn/test/test_iter_idx'),
         'loaders'     : {'batch_size': 1},
         'xpu'         : nh.XPU.coerce('cpu'),
