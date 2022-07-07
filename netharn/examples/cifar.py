@@ -776,7 +776,7 @@ def setup_harn():
     hyper = nh.HyperParams(
         # Datasets must be preconstructed
         datasets=datasets,
-        nice=config['nice'],
+        name=config['nice'],
         # Loader may be preconstructed
         loaders=loaders,
         workdir=config['workdir'],
@@ -844,17 +844,17 @@ def main():
     if ub.argflag('--lrtest'):
         """
         python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 \
-                --nice=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
+                --name=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
                 --lr=0.1 --init=kaiming_normal \
                 --batch_size=2048 --lrtest --show
 
         python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b7 \
-                --nice=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
+                --name=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
                 --lr=0.1 --init=kaiming_normal \
                 --batch_size=256  --lrtest --show
 
         python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b7 \
-                --nice=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
+                --name=test_cifar9 --optim=adamw --schedule=Exponential-g0.98 \
                 --lr=4e-2 --init=kaiming_normal \
                 --batch_size=256
         """
@@ -924,43 +924,43 @@ if __name__ == '__main__':
 
 
     CommandLine:
-        python -m netharn.examples.cifar --xpu=0 --nice=resnet50_baseline --arch=resnet50 --optim=sgd --schedule=step-150-250 --lr=0.1
-        python -m netharn.examples.cifar --xpu=0 --nice=wrn --arch=wrn_22 --optim=sgd --schedule=step-150-250 --lr=0.1
-        python -m netharn.examples.cifar --xpu=0 --nice=densenet --arch=densenet121 --optim=sgd --schedule=step-150-250 --lr=0.1
+        python -m netharn.examples.cifar --xpu=0 --name=resnet50_baseline --arch=resnet50 --optim=sgd --schedule=step-150-250 --lr=0.1
+        python -m netharn.examples.cifar --xpu=0 --name=wrn --arch=wrn_22 --optim=sgd --schedule=step-150-250 --lr=0.1
+        python -m netharn.examples.cifar --xpu=0 --name=densenet --arch=densenet121 --optim=sgd --schedule=step-150-250 --lr=0.1
 
-        python -m netharn.examples.cifar --xpu=0 --nice=se_resnet18 --arch=se_resnet18 --optim=sgd --schedule=step-150-250 --lr=0.01 --init=noop --decay=1e-5 --augment=simple
+        python -m netharn.examples.cifar --xpu=0 --name=se_resnet18 --arch=se_resnet18 --optim=sgd --schedule=step-150-250 --lr=0.01 --init=noop --decay=1e-5 --augment=simple
 
-        python -m netharn.examples.cifar --xpu=0 --nice=resnet50_newaug_b128 --batch_size=128 --arch=resnet50 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
+        python -m netharn.examples.cifar --xpu=0 --name=resnet50_newaug_b128 --batch_size=128 --arch=resnet50 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet7_newaug_b128 --batch_size=128 --arch=efficientnet-b7 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet7_newaug_b128 --batch_size=128 --arch=efficientnet-b7 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet3_newaug_b128 --batch_size=128 --arch=efficientnet-b3 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet3_newaug_b128 --batch_size=128 --arch=efficientnet-b3 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_newaug_b128 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
-
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b128_sz32 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b64_sz224 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=224,224
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_newaug_b64_sz224 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple --input_dims=224,224
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b128_sz32_v2 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-20-45-70-90-f5 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32  # 88%
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b128_sz32_v3 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-13-20-45-70-90-f5 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b128_sz32_v4 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-10-20-45-70-90-f5 --max_epoch=100 --lr=0.03 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
-
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_transfer_b64_sz224_v2 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-10-20 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=224,224
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_newaug_b128 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple
 
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet0_newaug_yogi_b1024 \
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b128_sz32 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b64_sz224 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=224,224
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_newaug_b64_sz224 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-150-250 --lr=0.1 --init=kaiming_normal --augment=simple --input_dims=224,224
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b128_sz32_v2 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-20-45-70-90-f5 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32  # 88%
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b128_sz32_v3 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-13-20-45-70-90-f5 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b128_sz32_v4 --batch_size=128 --arch=efficientnet-b0 --optim=sgd --schedule=step-10-20-45-70-90-f5 --max_epoch=100 --lr=0.03 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=32,32
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_transfer_b64_sz224_v2 --batch_size=64 --arch=efficientnet-b0 --optim=sgd --schedule=step-10-20 --max_epoch=100 --lr=0.01 --decay=5e-4 --init=cls --augment="crop,flip,gray,cutout" --input_dims=224,224
+
+
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet0_newaug_yogi_b1024 \
                 --batch_size=1028 --arch=efficientnet-b0 --optim=Yogi \
                 --schedule=step-60-120-160-250-350-f5 --decay=5e-4 --lr=0.01549 \
                 --init=kaiming_normal --augment=simple --grad_norm_max=35 \
                 --warmup_iters=100
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet1_newaug_diffgrad_b1024 \
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet1_newaug_diffgrad_b1024 \
                 --batch_size=1028 --arch=efficientnet-b1 --optim=DiffGrad \
                 --schedule=step-60-120-160-250-350-f5 --decay=5e-4 --lr=0.01 \
                 --init=kaiming_normal --augment=simple --grad_norm_max=35 \
@@ -968,7 +968,7 @@ if __name__ == '__main__':
 
 
         # Params from Cutout paper: https://arxiv.org/pdf/1708.04552.pdf
-        python -m netharn.examples.cifar --xpu=0 --nice=repro_cutout \
+        python -m netharn.examples.cifar --xpu=0 --name=repro_cutout \
                 --batch_size=128 \
                 --arch=efficientnet-b0 \
                 --optim=sgd --lr=0.01 --decay=5e-4 \
@@ -976,7 +976,7 @@ if __name__ == '__main__':
                 --init=kaiming_normal --augment=simple \
                 --grad_norm_max=35 --warmup_iters=100
 
-        python -m netharn.examples.cifar --xpu=0 --nice=repro_cutoutDiffGrad \
+        python -m netharn.examples.cifar --xpu=0 --name=repro_cutoutDiffGrad \
                 --batch_size=128 \
                 --arch=efficientnet-b1 \
                 --optim=DiffGrad --lr=0.01 --decay=5e-4 \
@@ -987,7 +987,7 @@ if __name__ == '__main__':
         0.015219216761025578
 
 
-        python -m netharn.examples.cifar --xpu=0 --nice=efficientnet7_scratch \
+        python -m netharn.examples.cifar --xpu=0 --name=efficientnet7_scratch \
             --arch=efficientnet-b7 --optim=sgd --schedule=step-150-250-350 \
             --batch_size=512 --lr=0.01 --init=noop --decay=1e-5
 
@@ -998,13 +998,13 @@ if __name__ == '__main__':
         python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0
 
         # This next command requires a bit more compute
-        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --nice=test_cifar2 --schedule=step-3-6-50 --lr=0.1 --init=cls --batch_size=2718
+        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --name=test_cifar2 --schedule=step-3-6-50 --lr=0.1 --init=cls --batch_size=2718
 
-        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --nice=test_cifar3 --schedule=step-3-6-12-16 --lr=0.256 --init=cls --batch_size=3000 --workers=2 --num_vali=0 --optim=rmsprop
+        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --name=test_cifar3 --schedule=step-3-6-12-16 --lr=0.256 --init=cls --batch_size=3000 --workers=2 --num_vali=0 --optim=rmsprop
 
-        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --nice=test_cifar3 --schedule=onecycle70 --lr=0.01  --init=cls --batch_size=3000 --workers=2 --num_vali=0 --optim=sgd --datasets=cifar100
+        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --name=test_cifar3 --schedule=onecycle70 --lr=0.01  --init=cls --batch_size=3000 --workers=2 --num_vali=0 --optim=sgd --datasets=cifar100
 
-        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --nice=test_cifar2 --schedule=ReduceLROnPlateau-p1-c1-f0.9 --lr=0.1 --init=cls --batch_size=2719 --workers=4 --optim=sgd --datasets=cifar100
+        python -m netharn.examples.cifar --xpu=0 --arch=efficientnet-b0 --name=test_cifar2 --schedule=ReduceLROnPlateau-p1-c1-f0.9 --lr=0.1 --init=cls --batch_size=2719 --workers=4 --optim=sgd --datasets=cifar100
 
         python -m netharn.examples.cifar.py --xpu=0 --arch=densenet121
         # Train on two GPUs with a larger batch size

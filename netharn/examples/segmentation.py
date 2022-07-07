@@ -756,7 +756,7 @@ def setup_harn(cmdline=True, **kw):
 
     # Create hyperparameters
     hyper = nh.HyperParams(
-        nice=config['name'],
+        name=config['name'],
         workdir=config['workdir'],
         xpu=nh.XPU.coerce(config['xpu']),
 

@@ -893,7 +893,7 @@ if __name__ == '__main__':
             --workers=4 --xpu=auto --batch_size=4 --bstep=4
 
         python -m netharn.examples.object_detection \
-            --nice=voc-detection-demo \
+            --name=voc-detection-demo \
             --train_dataset=~/data/VOC/voc-trainval.mscoco.json \
             --vali_dataset=~/data/VOC/voc-test-2007.mscoco.json \
             --pretrained=imagenet \
