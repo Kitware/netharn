@@ -54,7 +54,7 @@ Example:
     >>> })
     >>> harn = nh.FitHarn(hyper)
     >>> harn.preferences['use_tensorboard'] = False
-    >>> harn.preferences['timeout'] = 1
+    >>> harn.preferences['timeout'] = 10
     >>> harn.intervals['test'] = 1
     >>> harn.initialize(reset='delete')
     >>> harn.run()
@@ -110,7 +110,10 @@ Example:
     >>> # Now create an instance of deployed model that points to the
     >>> # Training dpath. (Note the directory structure setup by netharn is
     >>> # itself a deployment, it just has multiple files)
+    >>> import time
     >>> deployer = torch_liberator.DeployedModel(harn.train_dpath)
+    >>> train_path = ub.Path(harn.train_dpath)
+    >>> print(ub.repr2(list(train_path.walk())))
     >>> print('deployer.info = {}'.format(ub.repr2(deployer.info, nl=1)))
     >>> # Use the DeployedModel to package the imporant info in train_dpath
     >>> # into a standalone zipfile.
