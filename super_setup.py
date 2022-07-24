@@ -886,7 +886,7 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:utils/scriptconfig.git'},
     },
     {
-        'name': 'ndsampler', 'branch': 'dev/0.6.9', 'remote': 'origin',
+        'name': 'ndsampler', 'branch': 'dev/0.6.10', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/ndsampler.git'},
     },
 
