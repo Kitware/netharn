@@ -501,6 +501,7 @@ class Optimizer(object):
                 cls = nh.optimizers.AdamW
             kw = {
                 'lr': lr,
+                'weight_decay': decay,
                 # 'betas': (0.9, 0.999),
                 # 'eps': 1e-8,
                 # 'amsgrad': False
@@ -545,6 +546,13 @@ class Optimizer(object):
                     defaultkw = util_inspect.default_kwargs(cls)
                     kw = defaultkw.copy()
                     kw.update(ub.dict_isect(config, kw))
+                    # Hacks for common cases, otherwise if learning_rate is
+                    # given, but only lr exists in the signature, it will be
+                    # incorrectly ignored.
+                    if 'lr' in kw:
+                        kw['lr'] = lr
+                    if 'weight_decay' in kw:
+                        kw['weight_decay'] = decay
                     break
 
         if cls is None:
