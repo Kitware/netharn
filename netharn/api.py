@@ -333,9 +333,9 @@ class Initializer(object):
         # Allow init to specify a pretrained fpath
         if isinstance(init, six.string_types) and pretrained_fpath is None:
             from os.path import exists
-            pretraind_cand = ub.expandpath(init)
-            if exists(pretraind_cand):
-                pretrained_fpath = pretraind_cand
+            pretrained_cand = ub.expandpath(init)
+            if exists(pretrained_cand):
+                pretrained_fpath = pretrained_cand
 
         config['init'] = init
         config['pretrained_fpath'] = pretrained_fpath
