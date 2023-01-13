@@ -866,13 +866,13 @@ DEVEL_REPOS = [
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwcoco.git'},
     },
     {
-        'name': 'kwplot', 'branch': 'dev/0.4.13', 'remote': 'origin',
+        'name': 'kwplot', 'branch': 'dev/0.4.14', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:computer-vision/kwplot.git'},
     },
 
     # Pytorch deployer / exporter
     {
-        'name': 'liberator', 'branch': 'dev/0.0.2', 'remote': 'origin',
+        'name': 'liberator', 'branch': 'dev/0.0.3', 'remote': 'origin',
         'remotes': {'origin': 'git@gitlab.kitware.com:python/liberator.git'},
     },
     {
