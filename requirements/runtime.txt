@@ -10,16 +10,17 @@
 torch>=1.13.0  ; python_version < '4.0'  and python_version >= '3.11'   # Python 3.11+
 torch>=1.11.0  ; python_version < '3.11' and python_version >= '3.10'   # Python 3.10
 torch>=1.9.0   ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
-torch>=1.6.0   ; python_version < '3.9.0' and python_version >= '3.6.0'   # Python 3.6-3.8
+torch>=1.9.0   ; python_version < '3.9.0' and python_version >= '3.6.0'   # Python 3.6-3.8
 
 
 # torchvision req table
+# xdev availpkg torchvision
 # https://github.com/pytorch/vision
 torchvision>=0.12.0    ;                            python_version >= '3.10'    # Python 3.10+
 torchvision>=0.12.0    ; python_version < '3.10' and python_version >= '3.9'    # Python 3.9
-torchvision>=0.8.1     ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
-torchvision>=0.8.1     ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
-torchvision>=0.8.1     ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
+torchvision>=0.10.0    ; python_version < '3.9' and python_version >= '3.8'    # Python 3.8
+torchvision>=0.10.0    ; python_version < '3.8' and python_version >= '3.7'    # Python 3.7
+torchvision>=0.10.0    ; python_version < '3.7' and python_version >= '3.6'    # Python 3.6
 
 six >= 1.11.0
 
@@ -51,4 +52,4 @@ kwimage >= 0.9.7
 kwplot >= 0.4.12
 
 qualname>=0.1.0;python_version < '3.0' 
-torch_liberator >= 0.0.4
+torch_liberator >= 0.2.1
