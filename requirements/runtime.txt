@@ -45,8 +45,8 @@ imageio < 2.8.0;python_version < '3.0'
 # imgaug >= 0.2.6
 # imgaug < 0.3.0;python_version < '3.0' 
 
-# NOTE: in the future kwimage and kwplot may become optional
-scriptconfig >= 0.5.8
+# NOTE: in the future kwplot may become optional
+scriptconfig >= 0.7.0
 kwarray>=0.6.7
 kwimage >= 0.9.7
 kwplot >= 0.4.12
