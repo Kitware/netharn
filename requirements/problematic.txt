@@ -2,3 +2,7 @@
 pycocotools
 
 imgaug >= 0.2.6
+
+tensorboard_logger >= 0.1.0 
+
+tensorboard >= 1.8.0
