@@ -7,8 +7,10 @@ ignore_missing_imports = true
 [tool.xcookie]
 tags = [ "kitware", "gitlab", "purepy", "cv2",]
 mod_name = "netharn"
+description = "Train and deploy pytorch models"
 repo_name = "netharn"
 rel_mod_parent_dpath = "."
+ci_cpython_versions = ["3.7", "3.8", "3.9", "3.10"]
 os = [ "linux", "win", "all", "osx",]
 min_python = 3.7
 author = 'Jon Crall'
