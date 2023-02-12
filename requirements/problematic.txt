@@ -1,4 +1,6 @@
 # These are optional requirements that are problematic when installing via pip
 pycocotools
-
 imgaug >= 0.2.6
+tensorboard_logger >= 0.1.0 
+tensorboard >= 1.8.0
+protobuf >= 3.6.0

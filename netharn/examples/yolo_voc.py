@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 References:
     https://blog.paperspace.com/how-to-implement-a-yolo-object-detector-in-pytorch/
 """
-from __future__ import absolute_import, division, print_function, unicode_literals
 import os
 import torch
 import ubelt as ub
@@ -54,7 +52,7 @@ class YoloVOCDataset(nh.data.voc.VOCDataset):
 
         self.factor = factor  # downsample factor of yolo grid
 
-        self.base_wh = np.array(base_wh, dtype=np.int)
+        self.base_wh = np.array(base_wh, dtype=int)
 
         assert np.all(self.base_wh % self.factor == 0)
 
@@ -206,10 +204,10 @@ class YoloVOCDataset(nh.data.voc.VOCDataset):
         image = self._load_image(index)
         annot = self._load_annotation(index)
         # VOC loads annotations in tlbr
-        tlbr = annot['boxes'].astype(np.float)
+        tlbr = annot['boxes'].astype(float)
         gt_classes = annot['gt_classes']
         # Weight samples so we dont care about difficult cases
-        gt_weights = 1.0 - annot['gt_ishard'].astype(np.float)
+        gt_weights = 1.0 - annot['gt_ishard'].astype(float)
         return image, tlbr, gt_classes, gt_weights
 
     # @ub.memoize_method  # remove this if RAM is a problem

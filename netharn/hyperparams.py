@@ -943,8 +943,8 @@ class HyperParams(object):
 
 
             ```python
-            from scipy import exp, log
-            from scipy.special import gammaln
+            from numpy import exp, log
+            from scipy.special import loggamma
             def prob_unique(N, r):
                 return exp( gammaln(N+1) - gammaln(N-r+1) - r*log(N) )
 
@@ -959,17 +959,13 @@ class HyperParams(object):
             ```
 
             This is approximately 0.00056 or about 1 in 1784.
-            When r = 10000, it becomes had to compute the number because of
-            floating point errors, but the probability is likely astronomically
-            low. I doubt we will ever run training in the same work directory
-            (and with the same nice "name") 10,000 different times, so using an
-            8 character hash seems safe and user friendly for this purpose.
-            Perhaps we may move to 12, 16, or 32+ in the future, but for the
-            pre 1.0 netharn, 8 seems fine.
+
+            Should probably bump the size in a later version.  Note, the above
+            code does not seem to be producing the correct number, likely due
+            to floating point errors.
 
             References:
                 ..[1] https://www.johndcook.com/blog/2016/01/30/general-birthday-problem/
-
         """
         train_hashid = _hash_data(train_id)[0:8]
 
@@ -1001,7 +997,6 @@ class HyperParams(object):
         init_history = temp_initializer.history()
 
         # TODO: software versions
-
 
         train_info =  ub.odict([
             ('train_hashid', train_hashid),

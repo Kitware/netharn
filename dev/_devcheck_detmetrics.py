@@ -74,7 +74,7 @@ def voc_eval(lines, recs, classname, ovthresh=0.5, method=False, bias=1):
     for imagename in imagenames:
         R = [obj for obj in recs2[imagename] if obj['name'] == classname]
         bbox = np.array([x['bbox'] for x in R])
-        difficult = np.array([x['difficult'] for x in R]).astype(np.bool)
+        difficult = np.array([x['difficult'] for x in R]).astype(bool)
         det = [False] * len(R)
         npos = npos + sum(~difficult)
         class_recs[imagename] = {'bbox': bbox,
@@ -313,7 +313,7 @@ def _devcheck_voc_consistency():
             import kwimage
             true_boxes = kwimage.Boxes.random(num=nboxes, scale=100., rng=rng, format='cxywh')
             pred_boxes = true_boxes.copy()
-            pred_boxes.data = pred_boxes.data.astype(np.float) + (rng.rand() * noise)
+            pred_boxes.data = pred_boxes.data.astype(float) + (rng.rand() * noise)
             if nbad:
                 pred_boxes.data = np.vstack([
                     pred_boxes.data,

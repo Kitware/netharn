@@ -379,17 +379,43 @@ class Monitor(ub.NiceRepr):
             >>> monitor.update(0, {'loss': 0.1})
             >>> print(monitor.message(ansi=False))
             vloss: 0.8800 (n_bad=00, best=0.8800)
+
+        Example:
+            >>> # Test case for ignore_first_epochs
+            >>> monitor = Monitor(smoothing=0.6, ignore_first_epochs=2)
+            >>> monitor.update(0, {'loss': 0.1})
+            >>> print(monitor.message(ansi=False))
+            >>> monitor.update(1, {'loss': 1.1})
+            >>> print(monitor.message(ansi=False))
+            >>> monitor.update(2, {'loss': 0.3})
+            >>> print(monitor.message(ansi=False))
+            >>> monitor.update(3, {'loss': 0.2})
+            >>> print(monitor.message(ansi=False))
+            vloss: 0.1000 (n_bad=00, best=ignored)
+            vloss: 0.5000 (n_bad=00, best=ignored)
+            vloss: 0.4200 (n_bad=00, best=0.4200)
+            vloss: 0.3320 (n_bad=00, best=0.3320)
+
         """
         if not monitor._epochs:
             message = 'vloss is unevaluated'
             if ansi:
                 message = ub.color_text(message, 'blue')
         else:
-            prev_loss = monitor._smooth_metrics[-1]['loss']
-            best_loss = monitor._best_smooth_metrics['loss']
+            if monitor._smooth_metrics is None:
+                prev_loss_str = 'unknown'
+            else:
+                prev_loss = monitor._smooth_metrics[-1]['loss']
+                prev_loss_str = '{:.4f}'.format(prev_loss)
 
-            message = 'vloss: {:.4f} (n_bad={:02d}, best={:.4f})'.format(
-                prev_loss, monitor._n_bad_epochs, best_loss,
+            if monitor._best_smooth_metrics is None:
+                best_loss_str = 'ignored'
+            else:
+                best_loss = monitor._best_smooth_metrics['loss']
+                best_loss_str = '{:.4f}'.format(best_loss)
+
+            message = 'vloss: {} (n_bad={:02d}, best={})'.format(
+                prev_loss_str, monitor._n_bad_epochs, best_loss_str,
             )
             if monitor.patience is None:
                 patience = monitor.max_epoch

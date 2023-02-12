@@ -498,7 +498,7 @@ class Stitcher(ub.NiceRepr):
                 last = batch_idxs.shape[0] - 1
                 base_multi_idxs = tuple(batch_idxs[[0, last]].T)
                 # Add extra dimension for output classes
-                extra_multi_idxs = np.zeros(2, dtype=np.int)
+                extra_multi_idxs = np.zeros(2, dtype=int)
                 multi_idxs_range = base_multi_idxs + (extra_multi_idxs,)
                 ravel_idxs_range = np.ravel_multi_index(multi_idxs_range, dims=shape)
                 first = ravel_idxs_range[0]
@@ -507,7 +507,7 @@ class Stitcher(ub.NiceRepr):
                 ravel_index = ravel_sl
             else:
                 base_multi_idxs = tuple(batch_idxs.T)
-                extra_multi_idxs = np.zeros(len(batch_idxs), dtype=np.int)
+                extra_multi_idxs = np.zeros(len(batch_idxs), dtype=int)
                 # The indices for the 0-th class (which should be the last dimension)
                 multi_idxs_first = base_multi_idxs + (extra_multi_idxs,)
                 ravel_idxs_first = np.ravel_multi_index(multi_idxs_first, dims=shape)

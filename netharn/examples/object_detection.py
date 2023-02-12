@@ -102,7 +102,7 @@ class DetectDataset(torch.utils.data.Dataset):
         self.sampler = sampler
 
         self.factor = factor  # downsample factor of yolo grid
-        self.input_dims = np.array(input_dims, dtype=np.int)
+        self.input_dims = np.array(input_dims, dtype=int)
         assert np.all(self.input_dims % self.factor == 0)
 
         self.multi_scale_inp_size = np.array([

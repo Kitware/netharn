@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
 import itertools as it
 import numpy as np
 import torch
@@ -313,7 +311,7 @@ class SlidingSlices(ub.NiceRepr):
             >>> dims = (-2, -1)
             >>> # Make dummy predicted data
             >>> pred_shape = list(ub.take(slider.basis_shape, dims))
-            >>> pred = np.arange(1, slider.n_total + 1).reshape(pred_shape).astype(np.float)
+            >>> pred = np.arange(1, slider.n_total + 1).reshape(pred_shape).astype(float)
             >>> # upscale using computed transforms
             >>> upscaled = slider.upscale_overlay(pred)
 
@@ -325,7 +323,7 @@ class SlidingSlices(ub.NiceRepr):
             >>> dims = (-2, -1)
             >>> # Make dummy predicted data
             >>> pred_shape = list(ub.take(slider.basis_shape, dims))
-            >>> pred = np.arange(1, slider.n_total + 1).reshape(pred_shape).astype(np.float)
+            >>> pred = np.arange(1, slider.n_total + 1).reshape(pred_shape).astype(float)
             >>> # upscale using computed transforms
             >>> upscaled = slider.upscale_overlay(pred)
         """

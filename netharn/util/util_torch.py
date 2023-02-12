@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import torch
 import six
@@ -408,7 +406,7 @@ def one_hot_embedding(labels, num_classes, dtype=None):
         >>>     assert np.all(t3.cpu().numpy() == t.numpy())
     """
     if isinstance(labels, np.ndarray):
-        dtype = dtype or np.float
+        dtype = dtype or float
         y = np.eye(num_classes, dtype=dtype)
         y_onehot = y[labels]
     else:  # if torch.is_tensor(labels):
@@ -436,7 +434,7 @@ def one_hot_lookup(probs, labels):
         >>> one_hot_lookup(probs, labels)
         array([ 0,  4,  8, 10])
     """
-    return probs[np.eye(probs.shape[1], dtype=np.bool)[labels]]
+    return probs[np.eye(probs.shape[1], dtype=bool)[labels]]
 
 
 def torch_ravel_multi_index(multi_index, dims=None, device=None, strides_=None):

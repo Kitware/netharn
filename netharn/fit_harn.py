@@ -79,6 +79,7 @@ Example:
     >>>     }),
     >>>     'monitor'     : (nh.Monitor, {
     >>>         'max_epoch': 10,
+    >>>         'ignore_first_epochs': 2,
     >>>     }),
     >>>     # dynamics are a config option that modify the behavior of the main
     >>>     # training loop. These parameters effect the learned model.
