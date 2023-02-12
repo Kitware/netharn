@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
 import torch
 import torch.nn as nn
 
@@ -41,7 +39,7 @@ class ContrastiveLoss(nn.Module):
         >>> loss2x, dist = ut.exec_func_src(self.forward, globals(), globals(), keys=['loss2x', 'dist'])
         >>> ut.quit_if_noshow()
         >>> loss2x, dist, label = map(np.array, [loss2x, dist, label])
-        >>> label = label.astype(np.bool)
+        >>> label = label.astype(bool)
         >>> dist0_l2 = dist[~label]
         >>> dist1_l2 = dist[label]
         >>> loss0 = loss2x[~label] / 2

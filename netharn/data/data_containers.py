@@ -969,7 +969,7 @@ def nestshape(data):
 
         >>> num_masks, H, W = 3, 32, 32
         >>> rng = np.random.RandomState(0)
-        >>> masks = (rng.rand(num_masks, H, W) > 0.1).astype(np.int)
+        >>> masks = (rng.rand(num_masks, H, W) > 0.1).astype(int)
         >>> bitmasks = BitmapMasks(masks, height=H, width=W)
         >>> nestshape(bitmasks)
 

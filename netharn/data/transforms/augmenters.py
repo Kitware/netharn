@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, division, print_function, unicode_literals
 import numpy as np
 import six
 from netharn.data.transforms import augmenter_base
@@ -503,11 +501,11 @@ class Resize(augmenter_base.ParamatarizedAugmenter):
         sf = 1 / fw if fw >= fh else 1 / fh
 
         # Whats the closest integer size we can resize to?
-        embed_size = np.round(orig_size * sf).astype(np.int)
+        embed_size = np.round(orig_size * sf).astype(int)
         # Determine how much padding we need for the top/left side
         # Note: the right/bottom side might need an extra pixel of padding
         # depending on rounding issues.
-        shift = np.round((target_size - embed_size) / 2).astype(np.int)
+        shift = np.round((target_size - embed_size) / 2).astype(int)
 
         scale = embed_size / orig_size
         return shift, scale, embed_size
