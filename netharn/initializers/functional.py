@@ -812,54 +812,10 @@ def maximum_common_ordered_subpaths(paths1, paths2, sep='.', mode='embedding'):
         >>> mapping = ub.dzip(subpaths1, subpaths2)
         >>> print('mapping = {}'.format(ub.repr2(mapping, nl=1)))
     """
-    import networkx as nx
-
-    # the longest common balanced sequence problem
-    def _affinity(tok1, tok2):
-        score = 0
-        for t1, t2 in zip(tok1[::-1], tok2[::-1]):
-            if t1 == t2:
-                score += 1
-            else:
-                break
-        return score
-
-        # return tok1[-1] == tok2[-1]
-    node_affinity = _affinity
-    # import operator
-    # eq = operator.eq
-
-    def paths_to_otree(paths):
-        tree = nx.OrderedDiGraph()
-        for path in sorted(paths):
-            parts = tuple(path.split(sep))
-            node_path = []
-            for i in range(1, len(parts) + 1):
-                node = parts[0:i]
-                tree.add_node(node)
-                tree.nodes[node]['label'] = node[-1]
-                node_path.append(node)
-            for u, v in ub.iter_window(node_path, 2):
-                tree.add_edge(u, v)
-        return tree
-
-    tree1 = paths_to_otree(paths1)
-    tree2 = paths_to_otree(paths2)
-
-    # from netharn.initializers._nx_ext_v2.tree_embedding import forest_str
-    # print(len(tree1.nodes))
-    # print(len(tree2.nodes))
-    # print(forest_str(tree1))
-    # print(forest_str(tree2))
-
-    from netharn.initializers import _nx_ext_v2
-    if mode == 'embedding':
-        subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_embedding(tree1, tree2, node_affinity=node_affinity)
-    elif mode == 'isomorphism':
-        subtree1, subtree2, value = _nx_ext_v2.maximum_common_ordered_subtree_isomorphism(tree1, tree2, node_affinity=node_affinity)
-    else:
-        raise KeyError(mode)
-
-    subpaths1 = [sep.join(node) for node in subtree1.nodes if subtree1.out_degree[node] == 0]
-    subpaths2 = [sep.join(node) for node in subtree2.nodes if subtree2.out_degree[node] == 0]
-    return subpaths1, subpaths2
+    ub.schedule_deprecation(
+        'netharn', 'maximum_common_ordered_subpaths', 'function',
+        migration='use torch_liberator.initializer.maximum_common_ordered_subpaths instead',
+        deprecate='now',
+    )
+    from torch_liberator.initializer import maximum_common_ordered_subpaths
+    return maximum_common_ordered_subpaths(paths1, paths2, sep)

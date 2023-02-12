@@ -9,6 +9,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### Fixed
 * Hotfix so the training loop doesnt crash when `ignore_first_epochs>0`
 
+### Changed
+* Reworked dependencies
+* tensorboard is now an optional dependency
+
 ## Version 0.5.19 - Released 2022-07-06
 
 ### Added
