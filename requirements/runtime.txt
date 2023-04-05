@@ -28,7 +28,7 @@ numpy>=1.23.2    ; python_version < '4.0'  and python_version >= '3.11'  # Pytho
 numpy>=1.21.6    ; python_version < '3.11' and python_version >= '3.10'  # Python 3.10
 numpy>=1.19.3    ; python_version < '3.10' and python_version >= '3.6'   # Python 3.6 - 3.9
 
-ubelt>=1.2.3
+ubelt>=1.2.4
 
 parse >= 1.12.0
 pyflakes >= 2.4.0
@@ -42,7 +42,7 @@ imageio < 2.8.0;python_version < '3.0'
 # imgaug < 0.3.0;python_version < '3.0' 
 
 # NOTE: in the future kwplot may become optional
-scriptconfig >= 0.7.0
+scriptconfig >= 0.7.6
 kwarray>=0.6.7
 kwimage >= 0.9.7
 # kwplot >= 0.4.12
