@@ -2884,7 +2884,7 @@ class FitHarnPreferences(scfg.Config):
     # minimal default and a recommended default. The safe default is
     # statically defined to the minimum requirements, and recommended could
     # be manually or hueristically constructed.
-    default = {
+    __default__ = {
         'keyboard_debug': scfg.Value(True, help=(
             'Catch keyboard interupt with a somewhat-interactive prompt')
         ),
