@@ -2109,11 +2109,12 @@ class CoreMixin(object):
                             # This should be fixed in progiter.
                             steps_taken = (bx - prog._iter_idx) + 1
                             if bx == 0:
+                                prog.step(steps_taken, force=True)
                                 # HACK, after ubelt 0.9.3 we can use force=True
-                                prog._iter_idx += steps_taken
-                                prog._update_measurements()
-                                prog._update_estimates()
-                                prog.display_message()
+                                # prog._iter_idx += steps_taken
+                                # prog._update_measurements()
+                                # prog._update_estimates()
+                                # prog.display_message()
                                 harn.debug(prog.format_message().strip())
                             else:
                                 prog_updated = prog.update(steps_taken)
